@@ -28,7 +28,10 @@ except Exception as e:
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="Enterprise AI Brand Governance & Reputation Protection Platform"
+    description="Enterprise AI Brand Governance & Reputation Protection Platform",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
 )
 
 # CORS
