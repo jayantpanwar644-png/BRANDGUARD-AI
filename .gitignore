@@ -77,3 +77,8 @@ frontend/dist/
 
 # Python environment
 .python-version
+backend/inspect_*.py
+backend/trace_*.py
+backend/test_*.py
+backend/test_*.png
+frontend/package-lock.backup.json
