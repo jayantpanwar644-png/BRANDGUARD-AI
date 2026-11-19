@@ -321,31 +321,31 @@ export const OnboardingWizard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F9FC] text-[#172033] py-10 px-4 sm:px-6 flex flex-col items-center relative overflow-hidden select-none">
+    <div className="min-h-screen bg-[#F7F4EC] text-[#242B27] py-10 px-4 sm:px-6 flex flex-col items-center relative overflow-hidden select-none font-sans">
       <Aurora
         asBackgroundOnly
         className="fixed inset-0 pointer-events-none z-0"
-        colors={['#183B59', '#315C76', '#263A52']}
-        duration={28}
+        colors={['#829887', '#C6A66B', '#244B3F']}
+        duration={36}
         intensity={0.06}
       />
 
-      <div className="w-full max-w-3xl mx-auto z-10 relative">
+      <div className="w-full max-w-3xl mx-auto z-10 relative animate-fade-up">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#315C76] text-white mb-2 shadow-sm">
-            <ShieldCheck className="w-6 h-6 stroke-[2]" />
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#244B3F] text-[#FCFAF5] mb-2 shadow-[0_2px_8px_rgba(36,75,63,0.25)]">
+            <ShieldCheck className="w-6 h-6 stroke-[2.2]" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-[#172033]">
+          <h1 className="text-2xl sm:text-3xl font-normal font-heading text-[#242B27]">
             Mandatory Brand Setup
           </h1>
-          <p className="text-[13.5px] text-[#64748B] mt-1 max-w-xl mx-auto leading-relaxed">
+          <p className="text-[13.5px] text-[#68736B] mt-1 max-w-xl mx-auto leading-relaxed">
             Configure your enterprise brand profile, official assets, voice, and guidelines before unlocking AI auditing.
           </p>
         </div>
 
         {/* 6-Step Stepper Progress Bar */}
-        <div className="flex items-center justify-between mb-6 px-3 py-3 bg-white border border-[#E2E8F0] rounded-2xl shadow-xs overflow-x-auto">
+        <div className="flex items-center justify-between mb-6 px-4 py-3 bg-[#FCFAF5] border border-[#E4DFD5] rounded-2xl shadow-[0_2px_12px_rgba(36,43,39,0.04)] overflow-x-auto font-sans">
           {[
             { num: 1, label: 'Profile' },
             { num: 2, label: 'Identity' },
@@ -357,21 +357,21 @@ export const OnboardingWizard: React.FC = () => {
             <div key={s.num} className="flex items-center flex-shrink-0">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11.5px] font-bold transition-colors ${
                 step === s.num
-                  ? 'bg-[#315C76] text-white shadow-xs'
+                  ? 'bg-[#244B3F] text-[#FCFAF5] shadow-xs'
                   : step > s.num
-                  ? 'bg-[#239B6B] text-white'
-                  : 'bg-[#F1F5F9] text-[#94A3B8] border border-[#E2E8F0]'
+                  ? 'bg-[#244B3F] text-[#FCFAF5]'
+                  : 'bg-[#F7F4EC] text-[#93988F] border border-[#E4DFD5]'
               }`}>
                 {step > s.num ? <CheckCircle2 className="w-4 h-4" /> : s.num}
               </div>
               <span className={`ml-1.5 text-[12px] font-semibold hidden md:inline ${
-                step >= s.num ? 'text-[#172033]' : 'text-[#94A3B8]'
+                step >= s.num ? 'text-[#242B27]' : 'text-[#93988F]'
               }`}>
                 {s.label}
               </span>
               {s.num < 6 && (
                 <div className={`w-6 sm:w-10 h-0.5 mx-2 ${
-                  step > s.num ? 'bg-[#239B6B]' : 'bg-[#E2E8F0]'
+                  step > s.num ? 'bg-[#244B3F]' : 'bg-[#E4DFD5]'
                 }`} />
               )}
             </div>
@@ -380,14 +380,14 @@ export const OnboardingWizard: React.FC = () => {
 
         {/* Error Notification */}
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-[13px] flex items-center space-x-2">
+          <div className="mb-4 p-3 rounded-xl bg-[#FAF0EC] border border-[#ECCBC0] text-[#B85E42] text-[13px] flex items-center space-x-2">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {/* Wizard Container Card */}
-        <div className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-2xl p-6 sm:p-8 shadow-sm">
+        <div className="bg-[#FCFAF5] border border-[#E4DFD5] rounded-3xl p-6 sm:p-8 shadow-[0_8px_32px_rgba(36,43,39,0.06)]">
 
           {/* ─── STEP 1: Company Profile ─────────────────────────────────── */}
           {step === 1 && (

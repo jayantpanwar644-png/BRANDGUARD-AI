@@ -331,17 +331,17 @@ export const IntelligenceReports: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-16 select-none animate-in fade-in duration-300">
+    <div className="max-w-7xl mx-auto space-y-8 pb-16 select-none animate-fade-up font-sans">
       {/* 1. NEW PAGE IDENTITY & COMPACT SUMMARY */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="flex items-center space-x-2 text-[11px] font-sans uppercase tracking-wider text-[#315C76] font-semibold mb-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#315C76]" />
-              <span>Executive Intelligence & Audit Briefs</span>
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#EBF0ED] border border-[#C8D7CF] text-[11.5px] font-semibold text-[#244B3F] mb-2 font-sans">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#244B3F]" />
+              <span>Executive Intelligence &amp; Audit Briefs</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold font-heading text-[#172033]">Intelligence Reports</h1>
-            <p className="text-[14px] text-[#64748B] mt-0.5">
+            <h1 className="text-[28px] sm:text-[34px] font-normal font-heading text-[#242B27] tracking-tight leading-tight">Intelligence Reports</h1>
+            <p className="text-[14px] text-[#68736B] mt-0.5 max-w-2xl">
               Your brand performance. Your insights. One clear report.
             </p>
           </div>
@@ -349,9 +349,9 @@ export const IntelligenceReports: React.FC = () => {
           <div className="flex items-center space-x-2">
             <button
               onClick={fetchInitialData}
-              className="flex items-center space-x-1.5 px-3 py-1.5 text-[12px] font-semibold text-[#475569] bg-white border border-[#CBD5E1] rounded-lg hover:bg-[#F8FAFC] transition-colors shadow-2xs cursor-pointer"
+              className="flex items-center space-x-1.5 px-3.5 py-2 text-[12.5px] font-semibold text-[#242B27] bg-[#FCFAF5] border border-[#E4DFD5] rounded-xl hover:bg-[#F7F4EC] transition-all shadow-2xs cursor-pointer active:scale-[0.98]"
             >
-              <RefreshCw className="w-3.5 h-3.5 text-[#315C76]" />
+              <RefreshCw className="w-3.5 h-3.5 text-[#244B3F]" />
               <span>Sync Records</span>
             </button>
           </div>
@@ -359,25 +359,25 @@ export const IntelligenceReports: React.FC = () => {
 
         {/* Compact Visual Summary (Real Database Values) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Card className="p-3.5 flex items-center space-x-3.5 bg-white/90 border-[#E2E8F0] shadow-2xs">
-            <div className="w-9 h-9 rounded-lg bg-[#EAF2F8] text-[#315C76] flex items-center justify-center flex-shrink-0 border border-[#D0E2EC]">
+          <Card className="p-3.5 flex items-center space-x-3.5 bg-[#FCFAF5] border-[#E4DFD5] shadow-[0_2px_12px_rgba(36,43,39,0.04)]">
+            <div className="w-9 h-9 rounded-xl bg-[#EBF0ED] text-[#244B3F] flex items-center justify-center flex-shrink-0 border border-[#C8D7CF]">
               <FileDown className="w-4.5 h-4.5" />
             </div>
             <div>
-              <div className="text-[11px] uppercase tracking-wider font-semibold text-[#64748B]">Total Reports Generated</div>
-              <div className="text-[19px] font-bold font-heading text-[#172033]">
+              <div className="text-[11px] uppercase tracking-wider font-semibold text-[#68736B] font-sans">Total Reports Generated</div>
+              <div className="text-[20px] font-normal font-heading text-[#242B27]">
                 {overview ? overview.total_reports : reports.length}
               </div>
             </div>
           </Card>
 
-          <Card className="p-3.5 flex items-center space-x-3.5 bg-white/90 border-[#E2E8F0] shadow-2xs">
-            <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center flex-shrink-0 border border-emerald-200">
+          <Card className="p-3.5 flex items-center space-x-3.5 bg-[#FCFAF5] border-[#E4DFD5] shadow-[0_2px_12px_rgba(36,43,39,0.04)]">
+            <div className="w-9 h-9 rounded-xl bg-[#EBF0ED] text-[#244B3F] flex items-center justify-center flex-shrink-0 border border-[#C8D7CF]">
               <Layers className="w-4.5 h-4.5" />
             </div>
             <div>
-              <div className="text-[11px] uppercase tracking-wider font-semibold text-[#64748B]">Available Report Types</div>
-              <div className="text-[19px] font-bold font-heading text-[#172033]">
+              <div className="text-[11px] uppercase tracking-wider font-semibold text-[#68736B] font-sans">Available Report Types</div>
+              <div className="text-[20px] font-normal font-heading text-[#242B27]">
                 8 Categories
               </div>
             </div>

@@ -1,96 +1,230 @@
-import React from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FileEdit, ShieldCheck, UserCheck, Send, MessageSquare, 
-  Smile, AlertTriangle, Lightbulb, ArrowRight 
+  Smile, AlertTriangle, Lightbulb, ArrowRight, ChevronLeft, ChevronRight 
 } from 'lucide-react';
 
 interface ContinuousLoopWorkflowProps {
   className?: string;
 }
 
-export const ContinuousLoopWorkflow: React.FC<ContinuousLoopWorkflowProps> = ({ className = '' }) => {
-  const navigate = useNavigate();
+const WORKFLOW_STEPS = [
+  {
+    title: 'Create Post',
+    desc: 'Draft creative & copy',
+    icon: FileEdit,
+    iconBg: 'bg-[#EBF0ED] text-[#244B3F]',
+    path: '/app/overview',
+  },
+  {
+    title: 'AI Brand Audit',
+    desc: 'Vision & claim check',
+    icon: ShieldCheck,
+    iconBg: 'bg-[#EBF0ED] text-[#244B3F]',
+    path: '/app/brand-governance',
+  },
+  {
+    title: 'Human Approval',
+    desc: 'Manager sign-off',
+    icon: UserCheck,
+    iconBg: 'bg-[#EBF0ED] text-[#244B3F]',
+    path: '/app/approvals',
+  },
+  {
+    title: 'Publish Content',
+    desc: 'Authorized channel',
+    icon: Send,
+    iconBg: 'bg-[#F7F1E5] text-[#C6A66B]',
+    iconClass: 'rotate-45 -translate-y-0.5 translate-x-0.5',
+    path: '/app/approvals',
+  },
+  {
+    title: 'Collect Comments',
+    desc: 'Audience feedback',
+    icon: MessageSquare,
+    iconBg: 'bg-[#E8ECE9] text-[#344D3D]',
+    path: '/app/audience-intelligence',
+  },
+  {
+    title: 'Sentiment Analysis',
+    desc: 'AI emotion & topic',
+    icon: Smile,
+    iconBg: 'bg-[#E8ECE9] text-[#344D3D]',
+    path: '/app/audience-intelligence',
+  },
+  {
+    title: 'Reputation Risks',
+    desc: 'Incident detection',
+    icon: AlertTriangle,
+    iconBg: 'bg-[#FAF0EC] text-[#C77E63]',
+    path: '/app/reputation-risk',
+  },
+  {
+    title: 'Actionable Insights',
+    desc: 'Guidelines refinement',
+    icon: Lightbulb,
+    iconBg: 'bg-[#E8ECE9] text-[#244B3F]',
+    path: '/app/guidelines',
+  },
+];
 
-  const steps = [
-    {
-      title: 'Create Post',
-      desc: 'Draft creative & copy',
-      icon: FileEdit,
-      iconBg: 'bg-[#EAF4FB] text-[#2980B9]',
-      path: '/app/overview',
-    },
-    {
-      title: 'AI Brand Audit',
-      desc: 'Vision & claim check',
-      icon: ShieldCheck,
-      iconBg: 'bg-[#EAF4FB] text-[#2980B9]',
-      path: '/app/brand-governance',
-    },
-    {
-      title: 'Human Approval',
-      desc: 'Manager sign-off',
-      icon: UserCheck,
-      iconBg: 'bg-[#EAF4FB] text-[#2980B9]',
-      path: '/app/approvals',
-    },
-    {
-      title: 'Publish Content',
-      desc: 'Authorized channel',
-      icon: Send,
-      iconBg: 'bg-[#F5EDFA] text-[#8E44AD]',
-      iconClass: 'rotate-45 -translate-y-0.5 translate-x-0.5',
-      path: '/app/approvals',
-    },
-    {
-      title: 'Collect Comments',
-      desc: 'Audience feedback',
-      icon: MessageSquare,
-      iconBg: 'bg-[#EDF9F1] text-[#27AE60]',
-      path: '/app/audience-intelligence',
-    },
-    {
-      title: 'Sentiment Analysis',
-      desc: 'AI emotion & topic',
-      icon: Smile,
-      iconBg: 'bg-[#EDF9F1] text-[#27AE60]',
-      path: '/app/audience-intelligence',
-    },
-    {
-      title: 'Reputation Risks',
-      desc: 'Incident detection',
-      icon: AlertTriangle,
-      iconBg: 'bg-[#EDF9F1] text-[#27AE60]',
-      path: '/app/reputation-risk',
-    },
-    {
-      title: 'Actionable Insights',
-      desc: 'Guidelines refinement',
-      icon: Lightbulb,
-      iconBg: 'bg-[#EDF9F1] text-[#27AE60]',
-      path: '/app/guidelines',
-    },
-  ];
+export const ContinuousLoopWorkflow: React.FC<ContinuousLoopWorkflowProps> = React.memo(({ className = '' }) => {
+  const navigate = useNavigate();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Use refs for drag state to achieve 120 FPS zero-render responsiveness
+  const isDraggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+  const hasMovedRef = useRef(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+  const [isGrabbing, setIsGrabbing] = useState(false);
+
+  const checkScrollBounds = useCallback(() => {
+    if (!scrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+    setCanScrollLeft(scrollLeft > 4);
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    checkScrollBounds();
+    const handleResize = () => checkScrollBounds();
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => window.removeEventListener('resize', handleResize);
+  }, [checkScrollBounds]);
+
+  const slide = (direction: 'left' | 'right') => {
+    if (!scrollRef.current) return;
+    const container = scrollRef.current;
+    const scrollAmount = container.clientWidth * 0.65;
+    container.style.scrollBehavior = 'smooth';
+    container.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+    });
+    setTimeout(checkScrollBounds, 320);
+  };
+
+  // High-performance drag handlers (Native 1:1 tracking without re-render overhead)
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    isDraggingRef.current = true;
+    hasMovedRef.current = false;
+    startXRef.current = e.pageX - scrollRef.current.offsetLeft;
+    scrollLeftRef.current = scrollRef.current.scrollLeft;
+    scrollRef.current.style.scrollBehavior = 'auto';
+    setIsGrabbing(true);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingRef.current || !scrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - startXRef.current);
+    if (Math.abs(walk) > 4) {
+      hasMovedRef.current = true;
+    }
+    scrollRef.current.scrollLeft = scrollLeftRef.current - walk;
+    checkScrollBounds();
+  };
+
+  const handleMouseUpOrLeave = () => {
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      setIsGrabbing(false);
+      checkScrollBounds();
+    }
+  };
+
+  // Smooth mouse wheel translation for desktop users
+  const handleWheel = (e: React.WheelEvent) => {
+    if (!scrollRef.current) return;
+    // If predominantly vertical scroll while hovering the workflow track, slide horizontally
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      e.preventDefault();
+      scrollRef.current.style.scrollBehavior = 'auto';
+      scrollRef.current.scrollLeft += e.deltaY * 0.9;
+      checkScrollBounds();
+    }
+  };
 
   const handleStepClick = (path: string) => {
+    if (hasMovedRef.current) return; // Prevent navigation when user was sliding/dragging
     navigate(path);
   };
 
   return (
-    <div className={`bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-5 sm:p-7 select-none ${className}`}>
+    <div className={`bg-[#FCFAF5] rounded-2xl border border-[#E4DFD5] shadow-[0_2px_12px_rgba(36,43,39,0.04)] p-5 sm:p-7 select-none relative ${className}`}>
       {/* Section Header Row */}
       <div className="flex items-center justify-between mb-5 sm:mb-6">
-        <h2 className="text-[12px] sm:text-[13px] font-semibold tracking-wider text-[#5A6882] uppercase font-sans">
-          CONTINUOUS BRAND GOVERNANCE &amp; INTELLIGENCE LOOP
-        </h2>
-        <span className="text-[11px] font-bold tracking-wider text-[#1D5E85] bg-[#EAF2F8] px-3 py-1 rounded-full uppercase font-sans shadow-2xs">
-          8-STEP CYCLE
-        </span>
+        <div>
+          <h2 className="text-[12px] sm:text-[13px] font-semibold tracking-wider text-[#68736B] uppercase font-sans">
+            CONTINUOUS BRAND GOVERNANCE &amp; INTELLIGENCE LOOP
+          </h2>
+          <p className="text-[11px] text-[#93988F] font-mono mt-0.5">
+            Slide horizontally, drag, or use mouse wheel across the 8-step lifecycle
+          </p>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          {/* Slide Arrow Navigation Buttons */}
+          <div className="flex items-center space-x-1.5 mr-2">
+            <button
+              type="button"
+              onClick={() => slide('left')}
+              disabled={!canScrollLeft}
+              className={`w-8 h-8 rounded-full border border-[#DDD4C6] flex items-center justify-center transition-all cursor-pointer shadow-2xs ${
+                canScrollLeft 
+                  ? 'bg-[#FCFAF5] hover:bg-[#EFECE2] text-[#242B27] hover:scale-105 active:scale-95' 
+                  : 'bg-[#F5F2EB] text-[#BBB5A8] opacity-50 cursor-not-allowed'
+              }`}
+              aria-label="Slide Left"
+              title="Slide Left"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => slide('right')}
+              disabled={!canScrollRight}
+              className={`w-8 h-8 rounded-full border border-[#DDD4C6] flex items-center justify-center transition-all cursor-pointer shadow-2xs ${
+                canScrollRight 
+                  ? 'bg-[#FCFAF5] hover:bg-[#EFECE2] text-[#242B27] hover:scale-105 active:scale-95' 
+                  : 'bg-[#F5F2EB] text-[#BBB5A8] opacity-50 cursor-not-allowed'
+              }`}
+              aria-label="Slide Right"
+              title="Slide Right"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <span className="text-[11px] font-bold tracking-wider text-[#244B3F] bg-[#EBF0ED] border border-[#C8D7CF] px-3 py-1 rounded-full uppercase font-sans shadow-2xs">
+            8-STEP CYCLE
+          </span>
+        </div>
       </div>
 
-      {/* 8 Connected Cards with Arrows */}
-      <div className="flex items-center justify-between gap-1 sm:gap-1.5 overflow-x-auto pb-2 scrollbar-thin">
-        {steps.map((step, idx) => {
+      {/* 8 Connected Cards with Arrows & Smooth Zero-Jank Slider Container */}
+      <div 
+        ref={scrollRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUpOrLeave}
+        onMouseLeave={handleMouseUpOrLeave}
+        onWheel={handleWheel}
+        onScroll={checkScrollBounds}
+        className={`flex items-center justify-between gap-1.5 sm:gap-2 overflow-x-auto pb-3 pt-1 scrollbar-thin ${
+          isGrabbing ? 'cursor-grabbing select-none' : 'cursor-grab'
+        }`}
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-x pan-y',
+        }}
+      >
+        {WORKFLOW_STEPS.map((step, idx) => {
           const Icon = step.icon;
           return (
             <React.Fragment key={idx}>
@@ -98,7 +232,7 @@ export const ContinuousLoopWorkflow: React.FC<ContinuousLoopWorkflowProps> = ({ 
               <div
                 onClick={() => handleStepClick(step.path)}
                 title={`Navigate to ${step.title}`}
-                className="flex-1 min-w-[115px] sm:min-w-[124px] max-w-[152px] min-h-[142px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl py-4 sm:py-5 px-2.5 sm:px-3 text-center flex flex-col items-center justify-center transition-all duration-200 cursor-pointer hover:border-[#315C76] hover:bg-white hover:shadow-xs hover:-translate-y-0.5 group"
+                className="flex-1 min-w-[130px] sm:min-w-[140px] max-w-[165px] min-h-[145px] bg-[#F7F4EC] border border-[#E4DFD5] rounded-xl py-4 sm:py-5 px-3 text-center flex flex-col items-center justify-center transition-all duration-200 cursor-pointer hover:border-[#244B3F] hover:bg-[#FCFAF5] hover:shadow-[0_6px_16px_rgba(36,43,39,0.08)] hover:-translate-y-0.5 group flex-shrink-0"
               >
                 {/* Circular Icon Container */}
                 <div
@@ -108,19 +242,19 @@ export const ContinuousLoopWorkflow: React.FC<ContinuousLoopWorkflowProps> = ({ 
                 </div>
 
                 {/* Step Title */}
-                <div className="text-[13px] sm:text-[14px] font-bold text-[#172033] leading-snug mb-1 group-hover:text-[#315C76] transition-colors font-heading">
+                <div className="text-[13px] sm:text-[14px] font-semibold text-[#242B27] leading-snug mb-1 group-hover:text-[#244B3F] transition-colors font-sans">
                   {step.title}
                 </div>
 
                 {/* Step Description */}
-                <div className="text-[11.5px] sm:text-[12px] text-[#64748B] leading-tight font-normal">
+                <div className="text-[11.5px] sm:text-[12px] text-[#68736B] leading-tight font-normal">
                   {step.desc}
                 </div>
               </div>
 
               {/* Connecting Arrow (between every card) */}
-              {idx < steps.length - 1 && (
-                <div className="flex-shrink-0 text-[#94A3B8] px-0.5 sm:px-1">
+              {idx < WORKFLOW_STEPS.length - 1 && (
+                <div className="flex-shrink-0 text-[#829887] px-0.5 sm:px-1">
                   <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[1.5]" />
                 </div>
               )}
@@ -130,4 +264,6 @@ export const ContinuousLoopWorkflow: React.FC<ContinuousLoopWorkflowProps> = ({ 
       </div>
     </div>
   );
-};
+});
+
+ContinuousLoopWorkflow.displayName = 'ContinuousLoopWorkflow';

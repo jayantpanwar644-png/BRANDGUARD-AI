@@ -477,33 +477,33 @@ export const CompanyGuidelines: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-20 select-none animate-in fade-in duration-300">
+    <div className="max-w-7xl mx-auto space-y-6 pb-20 select-none animate-fade-up font-sans">
       
       {/* 1. Header with Status & Ground Truth Overview */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#EAF2F8] border border-[#CBD5E1] text-[11px] font-semibold uppercase tracking-wider text-[#315C76] mb-2">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#EBF0ED] border border-[#C8D7CF] text-[11.5px] font-semibold text-[#244B3F] mb-2 font-sans">
             <BookOpen className="w-3.5 h-3.5" />
             <span>Authoritative Ground Truth Hub</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-[#172033] tracking-tight">
+          <h1 className="text-[28px] sm:text-[34px] font-normal font-heading text-[#242B27] tracking-tight leading-tight">
             Company Guidelines &amp; Knowledge Base
           </h1>
-          <p className="text-[13.5px] sm:text-[14px] text-[#64748B] mt-0.5 max-w-3xl leading-relaxed">
-            Configure the verified brand ground truth, official assets, approved claims, and categorized vocabulary. This authoritative repository directly powers BrandGuard AI's vision audit and RAG claim verification models.
+          <p className="text-[13.5px] sm:text-[14.5px] text-[#68736B] mt-0.5 max-w-2xl leading-relaxed">
+            Centralized source of truth for official brand rules, logo parameters, color codes, approved claims, and communication policies.
           </p>
         </div>
 
         <div className="flex items-center space-x-2.5">
-          <div className="px-3.5 py-2 rounded-xl bg-[#FFFFFF] border border-[#E2E8F0] shadow-2xs flex items-center space-x-2 text-xs">
-            <ShieldCheck className="w-4 h-4 text-[#239B6B]" />
-            <span className="text-[#172033] font-semibold">
+          <div className="px-3.5 py-2 rounded-xl bg-[#FCFAF5] border border-[#E4DFD5] shadow-2xs flex items-center space-x-2 text-xs">
+            <ShieldCheck className="w-4 h-4 text-[#244B3F]" />
+            <span className="text-[#242B27] font-semibold">
               {brandProfile?.is_configured ? 'Active in AI Engine' : 'Setup Incomplete'}
             </span>
           </div>
           <button
             onClick={loadAllData}
-            className="p-2 bg-[#FFFFFF] hover:bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-[#315C76] transition-colors shadow-2xs cursor-pointer"
+            className="p-2 bg-[#FCFAF5] hover:bg-[#F7F4EC] border border-[#E4DFD5] rounded-xl text-[#244B3F] transition-colors shadow-2xs cursor-pointer active:scale-[0.98]"
             title="Reload latest brand guidelines"
           >
             <RefreshCw className="w-4 h-4" />

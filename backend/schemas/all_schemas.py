@@ -445,13 +445,28 @@ class UploadedContentResponse(BaseModel):
 
 # AI Correction & Suggestion Schemas
 class AISuggestionItem(BaseModel):
+    id: Optional[str] = None
+    finding_id: Optional[int] = None
     action_type: str  # Fix Brand Messaging, Improve Headline, Rewrite Caption, Replace Restricted Words, Improve CTA, Correct Unsupported Claims, Align with Brand Voice, Improve Visual Layout, Add Official Logo
     title: str
+    category: Optional[str] = None  # Typography, Claim, Color, Logo, Restricted Vocabulary, Tone, Visual
+    problem: Optional[str] = None
     original_text: Optional[str] = None
     suggested_text: Optional[str] = None
+    original_evidence: Optional[str] = None
+    rule: Optional[str] = None
+    action: Optional[str] = None  # CORRECT_SPELLING, REMOVE_CLAIM, REWRITE_TEXT, REPLACE_BRAND_COLOR, REPOSITION_LOGO, KEEP_VERIFIED_CONTENT
+    replacement: Optional[str] = None
+    rationale: Optional[str] = None
+    claim_status: Optional[str] = None  # VERIFIED, UNSUPPORTED, CONTRADICTED, REQUIRES_HUMAN_REVIEW, N/A
+    evidence_excerpt: Optional[str] = None
     explanation: str
     severity: str = "Medium"
     confidence: float = 0.92
+    human_approval_required: bool = False
+    status: str = "pending"
+    target_token: Optional[str] = None
+    bbox: Optional[List[int]] = None
 
 class AISuggestionsResponse(BaseModel):
     content_id: int
@@ -485,6 +500,7 @@ class GenerateRevisedCreativeRequest(BaseModel):
     finding_id: Optional[int] = None
     correction_type: Optional[str] = None
     custom_instructions: Optional[str] = None
+    approved_corrections: Optional[List[Dict[str, Any]]] = None
 
 class GenerateRevisedCreativeResponse(BaseModel):
     content_id: int
@@ -510,6 +526,8 @@ class RuleReviewRequest(BaseModel):
 class ApprovalDecisionRequest(BaseModel):
     decision: str  # Approved, Rejected, Changes Requested, Evidence Requested
     comments: Optional[str] = None
+    override_unverified_claims: Optional[bool] = False
+    version_number: Optional[int] = None
 
 class AddCommentRequest(BaseModel):
     comment_text: str
@@ -585,10 +603,34 @@ class SocialAccountResponse(BaseModel):
     account_name: str
     account_id: str
     status: str
-    permissions: str
+    permissions: Optional[str] = None
+    token_expires_at: Optional[datetime] = None
     last_synced_at: Optional[datetime]
+    profile_picture_url: Optional[str] = None
     connection_error: Optional[str]
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class SocialCommentResponse(BaseModel):
+    id: int
+    organisation_id: int
+    social_account_id: Optional[int] = None
+    platform: str
+    external_comment_id: str
+    external_post_id: Optional[str] = None
+    author_name: Optional[str] = None
+    comment_text: str
+    sentiment: Optional[str] = None
+    sentiment_confidence: Optional[float] = None
+    topic: Optional[str] = None
+    is_spam: bool = False
+    urgency_level: str = "Low"
+    ai_analyzed: bool = False
+    reply_text: Optional[str] = None
+    reply_status: str = "None"
+    synced_at: datetime
 
     class Config:
         from_attributes = True

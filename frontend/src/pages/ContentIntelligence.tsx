@@ -74,15 +74,16 @@ export const ContentIntelligence: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12 select-none animate-in fade-in duration-200">
+    <div className="max-w-7xl mx-auto space-y-6 pb-12 select-none animate-fade-up font-sans">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="text-[12px] font-sans uppercase tracking-wider text-[#315C76] font-semibold mb-1">
-            Asset Lifecycle & Archives
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#EBF0ED] border border-[#C8D7CF] text-[11.5px] font-semibold text-[#244B3F] mb-2 font-sans">
+            <FolderKanban className="w-3.5 h-3.5" />
+            <span>Asset Lifecycle &amp; Archives</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-[#172033]">Content Intelligence & History</h1>
-          <p className="text-[13.5px] sm:text-[14px] text-[#64748B] mt-0.5">
+          <h1 className="text-[28px] sm:text-[34px] font-normal font-heading text-[#242B27] tracking-tight leading-tight">Content Intelligence &amp; History</h1>
+          <p className="text-[13.5px] sm:text-[14.5px] text-[#68736B] mt-0.5 max-w-2xl leading-relaxed">
             Permanent archive of every submitted campaign asset, version history, audit reports, and re-analysis logs.
           </p>
         </div>

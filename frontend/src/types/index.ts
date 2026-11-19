@@ -368,6 +368,7 @@ export interface ConnectedSocialAccount {
   account_id: string;
   status: 'Connected' | 'Not Connected' | 'Token Expired' | 'Setup Required';
   permissions: string;
+  profile_picture_url?: string | null;
   last_synced_at?: string;
   connection_error?: string;
   created_at: string;

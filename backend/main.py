@@ -1,5 +1,6 @@
 import sys
 import os
+import types
 import mimetypes
 from pathlib import Path
 
@@ -12,6 +13,13 @@ for _p in [str(_root_dir), str(_backend_dir)]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
+# In Vercel Multi-Service where root is 'backend', dynamically alias current directory as 'backend'
+if "backend" not in sys.modules and (_backend_dir / "core").is_dir():
+    _backend_pkg = types.ModuleType("backend")
+    _backend_pkg.__path__ = [str(_backend_dir)]
+    _backend_pkg.__file__ = str(_backend_dir / "__init__.py")
+    sys.modules["backend"] = _backend_pkg
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, HTMLResponse
@@ -22,23 +30,65 @@ import backend.models.all_models  # ensure models are registered with Base
 # Create tables safely on startup
 try:
     Base.metadata.create_all(bind=engine)
+    try:
+        from backend.migrations.migrate_social_accounts import run_migration as run_social_migration
+        run_social_migration()
+    except Exception:
+        pass
+    # Auto-seed demo enterprise data
+    def _seed_initial_demo_data():
+        from backend.core.database import SessionLocal
+        from backend.core.security import hash_password
+        from backend.models.all_models import User, Organisation, BrandProfile
+        db = SessionLocal()
+        try:
+            if not db.query(User).filter(User.email == "admin@nexusdynamics.io").first():
+                org = Organisation(
+                    name="Nexus Dynamics Inc",
+                    official_email="admin@nexusdynamics.io",
+                    industry="Enterprise Security / SaaS",
+                    website="https://nexusdynamics.io",
+                )
+                db.add(org)
+                db.flush()
+                profile = BrandProfile(
+                    organisation_id=org.id,
+                    company_name="Nexus Dynamics",
+                    primary_color="#1A56DB",
+                    secondary_color="#7E3AF2",
+                    accent_color="#10B981",
+                    is_configured=True
+                )
+                db.add(profile)
+                user = User(
+                    organisation_id=org.id,
+                    email="admin@nexusdynamics.io",
+                    full_name="Chief Brand Officer",
+                    hashed_password=hash_password("SecurePassword2026!"),
+                    role="Admin",
+                    is_active=True
+                )
+                db.add(user)
+                db.commit()
+        except Exception:
+            db.rollback()
+        finally:
+            db.close()
+    _seed_initial_demo_data()
 except Exception as e:
     print(f"Startup warning: Database initialization: {e}")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="Enterprise AI Brand Governance & Reputation Protection Platform",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json"
+    description="Enterprise AI Brand Governance & Reputation Protection Platform"
 )
 
 # CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -92,6 +142,8 @@ app.include_router(audience.router, prefix=settings.API_V1_STR)
 app.include_router(reputation.router, prefix=settings.API_V1_STR)
 app.include_router(reports.router, prefix=settings.API_V1_STR)
 app.include_router(integrations.router, prefix=settings.API_V1_STR)
+app.include_router(integrations.webhook_router, prefix=settings.API_V1_STR)
+app.include_router(integrations.webhook_router)
 app.include_router(dashboard.router, prefix=settings.API_V1_STR)
 app.include_router(settings_router.router, prefix=settings.API_V1_STR)
 app.include_router(chat.router, prefix=settings.API_V1_STR)
@@ -144,4 +196,6 @@ if _has_frontend_build:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.main:app", host="127.0.0.1", port=8000, reload=True)
+    port = int(os.getenv("PORT", 8000))
+    host = os.getenv("HOST", "0.0.0.0")
+    uvicorn.run("backend.main:app", host=host, port=port, reload=False)

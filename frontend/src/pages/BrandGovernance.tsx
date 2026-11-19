@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Sparkles, ShieldCheck, CheckCircle2, AlertTriangle, 
@@ -353,7 +353,25 @@ export const BrandGovernance: React.FC = () => {
   const isPassed = overallStatus === 'Passed' || overallStatus === 'Approved';
   const isFailed = overallStatus === 'Failed' || overallStatus === 'High-Risk Content';
 
-  // Filtered Findings
+  // Filtered Findings and Counts (computed inline without hook violation)
+  let high = 0;
+  let medium = 0;
+  let identity = 0;
+  let claimsCount = 0;
+  let relevance = 0;
+
+  findings.forEach((f: any) => {
+    const sev = f.severity;
+    const type = f.issue_type?.toLowerCase() || '';
+    const title = f.title?.toLowerCase() || '';
+
+    if (sev === 'High' || sev === 'Critical') high++;
+    if (sev === 'Medium' || sev === 'Low') medium++;
+    if (['color', 'logo', 'typography', 'visual'].includes(type)) identity++;
+    if (['claim', 'restricted vocabulary'].includes(type)) claimsCount++;
+    if (type.includes('relevance') || title.includes('relevance')) relevance++;
+  });
+
   const filteredFindings = findings.filter((f: any) => {
     if (findingFilter === 'all') return true;
     if (findingFilter === 'high') return f.severity === 'High' || f.severity === 'Critical';
@@ -364,20 +382,22 @@ export const BrandGovernance: React.FC = () => {
     return true;
   });
 
+  const counts = { high, medium, identity, claims: claimsCount, relevance };
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-16 select-none animate-in fade-in duration-200">
+    <div className="max-w-7xl mx-auto space-y-6 pb-16 select-none animate-fade-up font-sans">
       
       {/* 1. Header & Asset Selector */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#EAF2F8] border border-[#CBD5E1] text-[11px] font-semibold uppercase tracking-wider text-[#315C76] mb-2">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#EBF0ED] border border-[#C8D7CF] text-[11.5px] font-semibold text-[#244B3F] mb-2 font-sans">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Pillar 1 • Pre-Publication Brand Governance &amp; AI Audit</span>
           </div>
-          <h1 className="text-[26px] sm:text-[32px] font-bold font-heading text-[#172033] tracking-tight leading-tight">
+          <h1 className="text-[28px] sm:text-[34px] font-normal font-heading text-[#242B27] tracking-tight leading-tight">
             Brand Governance &amp; Audit
           </h1>
-          <p className="text-[13.5px] sm:text-[14.5px] text-[#64748B] mt-0.5 max-w-2xl leading-relaxed">
+          <p className="text-[13.5px] sm:text-[14.5px] text-[#68736B] mt-0.5 max-w-2xl leading-relaxed">
             Automated visual compliance audit, logo validation, color swatch matching, and RAG claim verification.
           </p>
         </div>
@@ -388,7 +408,7 @@ export const BrandGovernance: React.FC = () => {
             <select
               value={selectedId || ''}
               onChange={(e) => handleSelectContent(Number(e.target.value))}
-              className="bg-[#FFFFFF] border border-[#CBD5E1] text-[13px] font-semibold text-[#172033] rounded-xl pl-3 pr-8 py-2.5 focus:outline-none focus:border-[#315C76] shadow-2xs appearance-none cursor-pointer"
+              className="bg-[#FCFAF5] border border-[#E4DFD5] text-[13px] font-semibold text-[#242B27] rounded-xl pl-3.5 pr-8 py-2.5 focus:outline-none focus:border-[#244B3F] shadow-2xs appearance-none cursor-pointer"
             >
               {contents.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -396,22 +416,22 @@ export const BrandGovernance: React.FC = () => {
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-4 h-4 text-[#68736B] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           <button
             onClick={handleReanalyse}
             disabled={reanalysing}
-            className="flex items-center space-x-1.5 px-3.5 py-2.5 bg-[#FFFFFF] hover:bg-[#F8FAFC] text-[#172033] text-[13px] font-semibold rounded-xl border border-[#CBD5E1] transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+            className="flex items-center space-x-1.5 px-3.5 py-2.5 bg-[#FCFAF5] hover:bg-[#F7F4EC] text-[#242B27] text-[13px] font-semibold rounded-xl border border-[#E4DFD5] transition-colors shadow-2xs cursor-pointer disabled:opacity-50 active:scale-[0.98]"
             title="Re-run brand audit against latest guidelines"
           >
-            <RotateCcw className={`w-3.5 h-3.5 text-[#315C76] ${reanalysing ? 'animate-spin' : ''}`} />
+            <RotateCcw className={`w-3.5 h-3.5 text-[#244B3F] ${reanalysing ? 'animate-spin' : ''}`} />
             <span>{reanalysing ? 'Auditing...' : 'Re-analyse'}</span>
           </button>
 
           <button
             onClick={() => navigate('/app/approvals')}
-            className="flex items-center space-x-1.5 px-4 py-2.5 bg-[#172333] hover:bg-[#253244] text-white text-[13px] font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+            className="flex items-center space-x-1.5 px-4 py-2.5 bg-[#244B3F] hover:bg-[#1A362D] text-[#FCFAF5] text-[13px] font-semibold rounded-xl shadow-xs transition-colors cursor-pointer active:scale-[0.98]"
           >
             <span>Approval Center</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -500,11 +520,11 @@ export const BrandGovernance: React.FC = () => {
       {contentDetail && (
         <>
           {/* 2. Executive Audit Summary & Visual Gauges */}
-          <div className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-2xl p-5 sm:p-6 shadow-xs space-y-5">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#F1F5F9]">
+          <div className="bg-[#FCFAF5] border border-[#E4DFD5] rounded-2xl p-5 sm:p-6 shadow-[0_2px_12px_rgba(36,43,39,0.04)] space-y-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#EFEBE3]">
               <div className="flex items-start sm:items-center space-x-3.5">
                 <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  isPassed ? 'bg-[#EAF7F1] text-[#239B6B]' : isFailed ? 'bg-[#FEE2E2] text-[#DC2626]' : 'bg-[#FEF3C7] text-[#D97706]'
+                  isPassed ? 'bg-[#EBF0ED] text-[#244B3F]' : isFailed ? 'bg-[#FAF0EC] text-[#C77E63]' : 'bg-[#F9F5EC] text-[#C6A66B]'
                 }`}>
                   {isPassed ? (
                     <CheckCircle2 className="w-6 h-6 stroke-[2]" />
@@ -517,15 +537,15 @@ export const BrandGovernance: React.FC = () => {
                 <div>
                   <div className="flex items-center space-x-2">
                     <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                      isPassed ? 'bg-[#EAF7F1] text-[#239B6B]' : isFailed ? 'bg-[#FEE2E2] text-[#DC2626]' : 'bg-[#FEF3C7] text-[#D97706]'
+                      isPassed ? 'bg-[#EBF0ED] text-[#244B3F]' : isFailed ? 'bg-[#FAF0EC] text-[#C77E63]' : 'bg-[#F9F5EC] text-[#9E7A3E]'
                     }`}>
                       {overallStatus}
                     </span>
-                    <span className="text-[12px] text-[#64748B] font-medium">
+                    <span className="text-[12px] text-[#68736B] font-medium font-sans">
                       Audit Version {contentDetail.current_version} • Guideline v{latestReport?.guideline_version || '1.0'}
                     </span>
                   </div>
-                  <h2 className="text-[17px] sm:text-[18px] font-bold font-heading text-[#172033] mt-0.5">
+                  <h2 className="text-[18px] sm:text-[20px] font-normal font-heading text-[#242B27] mt-0.5">
                     {latestReport?.final_recommendation === 'Ready for Approval'
                       ? 'Creative Satisfies Pre-Publication Compliance Rules'
                       : latestReport?.final_recommendation === 'High-Risk Content'
@@ -540,17 +560,17 @@ export const BrandGovernance: React.FC = () => {
                   <button
                     onClick={handleDownloadAuditPDF}
                     disabled={isDownloadingAuditPDF}
-                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#FFFFFF] hover:bg-[#F8FAFC] border border-[#CBD5E1] text-[#172033] text-[12.5px] font-semibold rounded-lg transition-colors cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#FCFAF5] hover:bg-[#F7F4EC] border border-[#E4DFD5] text-[#242B27] text-[12.5px] font-semibold rounded-xl transition-colors cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed"
                     title="Download Official PDF Audit Report"
                   >
                     {isDownloadingAuditPDF ? (
                       <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#315C76]" />
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#244B3F]" />
                         <span>Generating...</span>
                       </>
                     ) : (
                       <>
-                        <Download className="w-3.5 h-3.5 text-[#315C76]" />
+                        <Download className="w-3.5 h-3.5 text-[#244B3F]" />
                         <span>Download Audit Report</span>
                       </>
                     )}
@@ -560,7 +580,7 @@ export const BrandGovernance: React.FC = () => {
                 {latestReport?.summary && (
                   <button
                     onClick={() => setShowFullSummary(!showFullSummary)}
-                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#CBD5E1] text-[#315C76] text-[12.5px] font-semibold rounded-lg transition-colors cursor-pointer"
+                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#F7F4EC] hover:bg-[#EFECE2] border border-[#E4DFD5] text-[#244B3F] text-[12.5px] font-semibold rounded-xl transition-colors cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     <span>{showFullSummary ? 'Hide Brief' : 'View Brief'}</span>
@@ -657,74 +677,74 @@ export const BrandGovernance: React.FC = () => {
                 <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[12px] font-medium text-[#64748B]">Visual &amp; Contrast</span>
-                    <span className="text-[15px] font-bold font-heading tabular-nums text-[#315C76]">
+                    <span className="text-[15px] font-bold tabular-nums text-[#244B3F]">
                       {Math.round(latestReport.visual_quality_score)}/100
                     </span>
                   </div>
-                  <div className="w-full h-2 bg-[#E2E8F0] rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-[#E4DFD5] rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-[#315C76] rounded-full transition-all duration-500" 
+                      className="h-full bg-[#244B3F] rounded-full transition-all duration-500" 
                       style={{ width: `${latestReport.visual_quality_score}%` }} 
                     />
                   </div>
-                  <div className="text-[11px] text-[#64748B]">
+                  <div className="text-[11px] text-[#68736B]">
                     {latestReport.visual_quality_score >= 80 ? 'Optimal sharpness & resolution' : 'Low contrast / clarity alert'}
                   </div>
                 </div>
 
                 {/* 2. Readability Index */}
-                <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
+                <div className="p-3.5 rounded-xl bg-[#F7F4EC] border border-[#E4DFD5] space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[12px] font-medium text-[#64748B]">Readability Index</span>
-                    <span className="text-[15px] font-bold font-heading tabular-nums text-[#239B6B]">
+                    <span className="text-[12px] font-medium text-[#68736B]">Readability Index</span>
+                    <span className="text-[15px] font-bold tabular-nums text-[#244B3F]">
                       {Math.round(latestReport.readability_score)}/100
                     </span>
                   </div>
-                  <div className="w-full h-2 bg-[#E2E8F0] rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-[#E4DFD5] rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-[#239B6B] rounded-full transition-all duration-500" 
+                      className="h-full bg-[#244B3F] rounded-full transition-all duration-500" 
                       style={{ width: `${latestReport.readability_score}%` }} 
                     />
                   </div>
-                  <div className="text-[11px] text-[#64748B]">
+                  <div className="text-[11px] text-[#68736B]">
                     {latestReport.readability_score >= 80 ? 'Typography hierarchy legible' : 'Small font or low contrast'}
                   </div>
                 </div>
 
                 {/* 3. Brand Adherence */}
-                <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
+                <div className="p-3.5 rounded-xl bg-[#F7F4EC] border border-[#E4DFD5] space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[12px] font-medium text-[#64748B]">Brand Adherence</span>
-                    <span className="text-[15px] font-bold font-heading tabular-nums text-[#7C3AED]">
+                    <span className="text-[12px] font-medium text-[#68736B]">Brand Adherence</span>
+                    <span className="text-[15px] font-bold tabular-nums text-[#C6A66B]">
                       {Math.round(latestReport.brand_consistency_score)}/100
                     </span>
                   </div>
-                  <div className="w-full h-2 bg-[#E2E8F0] rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-[#E4DFD5] rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-[#7C3AED] rounded-full transition-all duration-500" 
+                      className="h-full bg-[#C6A66B] rounded-full transition-all duration-500" 
                       style={{ width: `${latestReport.brand_consistency_score}%` }} 
                     />
                   </div>
-                  <div className="text-[11px] text-[#64748B]">
+                  <div className="text-[11px] text-[#68736B]">
                     {latestReport.brand_consistency_score >= 80 ? 'Palette aligned with guidelines' : 'Color divergence detected'}
                   </div>
                 </div>
 
                 {/* 4. Messaging Quality */}
-                <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
+                <div className="p-3.5 rounded-xl bg-[#F7F4EC] border border-[#E4DFD5] space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[12px] font-medium text-[#64748B]">Messaging Compliance</span>
-                    <span className="text-[15px] font-bold font-heading tabular-nums text-[#0EA5E9]">
+                    <span className="text-[12px] font-medium text-[#68736B]">Messaging Compliance</span>
+                    <span className="text-[15px] font-bold tabular-nums text-[#829887]">
                       {Math.round(latestReport.messaging_score)}/100
                     </span>
                   </div>
-                  <div className="w-full h-2 bg-[#E2E8F0] rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-[#E4DFD5] rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-[#0EA5E9] rounded-full transition-all duration-500" 
+                      className="h-full bg-[#829887] rounded-full transition-all duration-500" 
                       style={{ width: `${latestReport.messaging_score}%` }} 
                     />
                   </div>
-                  <div className="text-[11px] text-[#64748B]">
+                  <div className="text-[11px] text-[#68736B]">
                     {claims.length === 0 ? 'Zero high-risk claims found' : `${claims.length} claim(s) tracked for proof`}
                   </div>
                 </div>
@@ -733,44 +753,44 @@ export const BrandGovernance: React.FC = () => {
           </div>
 
           {/* ─── PHASE 9: IMPROVE THIS CREATIVE WITH AI (DEDICATED SECTION) ─── */}
-          <div className="bg-white border border-[#CBD5E1] rounded-2xl p-6 shadow-sm space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+          <div className="bg-[#FCFAF5] border border-[#E4DFD5] rounded-2xl p-6 shadow-[0_2px_12px_rgba(36,43,39,0.04)] space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFEBE3]">
               <div className="flex items-center space-x-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#315C76] text-white flex items-center justify-center">
-                  <Wand2 className="w-5 h-5 stroke-[2]" />
+                <div className="w-9 h-9 rounded-xl bg-[#244B3F] text-[#FCFAF5] flex items-center justify-center">
+                  <Wand2 className="w-5 h-5 stroke-[2] text-[#C6A66B]" />
                 </div>
                 <div>
-                  <h3 className="text-[17px] font-bold font-heading text-[#172033]">
+                  <h3 className="text-[18px] font-normal font-heading text-[#242B27]">
                     Improve This Creative with AI
                   </h3>
-                  <p className="text-[12.5px] text-[#64748B]">
+                  <p className="text-[12.5px] text-[#68736B]">
                     Actionable corrections grounded in your confirmed brand guidelines and approved facts.
                   </p>
                 </div>
               </div>
 
               {/* Mode Tabs */}
-              <div className="flex items-center space-x-1.5 p-1 bg-slate-100 rounded-xl">
+              <div className="flex items-center space-x-1.5 p-1 bg-[#F7F4EC] rounded-xl border border-[#E4DFD5]">
                 <button
                   onClick={() => setActiveCorrectionTab('suggestions')}
-                  className={`px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all cursor-pointer ${
-                    activeCorrectionTab === 'suggestions' ? 'bg-white text-[#172033] shadow-xs' : 'text-slate-600 hover:text-[#172033]'
+                  className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all cursor-pointer ${
+                    activeCorrectionTab === 'suggestions' ? 'bg-[#FCFAF5] text-[#242B27] shadow-2xs border border-[#E4DFD5]' : 'text-[#68736B] hover:text-[#242B27]'
                   }`}
                 >
                   Suggest Changes
                 </button>
                 <button
                   onClick={() => setActiveCorrectionTab('rewrite')}
-                  className={`px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all cursor-pointer ${
-                    activeCorrectionTab === 'rewrite' ? 'bg-white text-[#172033] shadow-xs' : 'text-slate-600 hover:text-[#172033]'
+                  className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all cursor-pointer ${
+                    activeCorrectionTab === 'rewrite' ? 'bg-[#FCFAF5] text-[#242B27] shadow-2xs border border-[#E4DFD5]' : 'text-[#68736B] hover:text-[#242B27]'
                   }`}
                 >
                   Rewrite Text &amp; Caption
                 </button>
                 <button
                   onClick={() => setActiveCorrectionTab('revised_image')}
-                  className={`px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all cursor-pointer ${
-                    activeCorrectionTab === 'revised_image' ? 'bg-white text-[#172033] shadow-xs' : 'text-slate-600 hover:text-[#172033]'
+                  className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all cursor-pointer ${
+                    activeCorrectionTab === 'revised_image' ? 'bg-[#FCFAF5] text-[#242B27] shadow-2xs border border-[#E4DFD5]' : 'text-[#68736B] hover:text-[#242B27]'
                   }`}
                 >
                   Generate Revised Creative
@@ -897,9 +917,9 @@ export const BrandGovernance: React.FC = () => {
             
             {/* Left Column: Asset Visual Artwork Preview (v1 vs v2) */}
             <div className="lg:col-span-5 space-y-5">
-              <Card className="p-5 bg-[#FFFFFF] border-[#E2E8F0] space-y-4 shadow-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-[#F1F5F9]">
-                  <h3 className="text-[15px] font-bold font-heading text-[#172033]">
+              <Card className="p-5 bg-[#FCFAF5] border-[#E4DFD5] space-y-4 shadow-[0_2px_12px_rgba(36,43,39,0.04)]">
+                <div className="flex items-center justify-between pb-2 border-b border-[#EFEBE3]">
+                  <h3 className="text-[16px] font-normal font-heading text-[#242B27]">
                     {contentDetail.revised_file_path ? 'Side-by-Side Asset Preview' : 'Audited Creative Asset'}
                   </h3>
                   <Badge status={overallStatus} />
@@ -909,52 +929,52 @@ export const BrandGovernance: React.FC = () => {
                 {contentDetail.revised_file_path ? (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">Version 1 (Original)</span>
-                      <div className="aspect-square rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] overflow-hidden flex items-center justify-center p-2 relative">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#68736B] block font-sans">Version 1 (Original)</span>
+                      <div className="aspect-square rounded-2xl bg-[#F7F4EC] border border-[#E4DFD5] overflow-hidden flex items-center justify-center p-2 relative shadow-inner">
                         <img 
                           src={contentDetail.file_path} 
                           alt="Original Artwork" 
-                          className="max-h-full max-w-full object-contain rounded-lg shadow-2xs"
+                          className="max-h-full max-w-full object-contain rounded-xl shadow-2xs"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-1.5">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 block">Version 2 (AI Revised)</span>
-                      <div className="aspect-square rounded-xl bg-emerald-50/40 border border-emerald-200 overflow-hidden flex items-center justify-center p-2 relative">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#244B3F] block font-sans">Version 2 (AI Revised)</span>
+                      <div className="aspect-square rounded-2xl bg-[#EBF0ED] border border-[#C8D7CF] overflow-hidden flex items-center justify-center p-2 relative shadow-inner">
                         <img 
                           src={contentDetail.revised_file_path} 
                           alt="Revised Artwork" 
-                          className="max-h-full max-w-full object-contain rounded-lg shadow-2xs"
+                          className="max-h-full max-w-full object-contain rounded-xl shadow-2xs"
                         />
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="aspect-square rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] overflow-hidden flex items-center justify-center p-3 relative group">
+                  <div className="aspect-square rounded-2xl bg-[#F7F4EC] border border-[#E4DFD5] overflow-hidden flex items-center justify-center p-3 relative group shadow-inner">
                     <img 
                       src={contentDetail.file_path} 
                       alt={contentDetail.title} 
-                      className="max-h-full max-w-full object-contain rounded-lg shadow-2xs transition-transform duration-300 group-hover:scale-102"
+                      className="max-h-full max-w-full object-contain rounded-xl shadow-2xs transition-transform duration-300 group-hover:scale-102"
                     />
                   </div>
                 )}
 
                 {/* Metadata */}
-                <div className="grid grid-cols-2 gap-2 text-[12px] bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0]">
+                <div className="grid grid-cols-2 gap-2 text-[12px] bg-[#F7F4EC] p-3 rounded-xl border border-[#E4DFD5] font-sans">
                   <div>
-                    <span className="text-[#64748B]">Active Version:</span>{' '}
-                    <span className="font-bold text-[#172033]">v{contentDetail.current_version}</span>
+                    <span className="text-[#68736B]">Active Version:</span>{' '}
+                    <span className="font-bold text-[#242B27]">v{contentDetail.current_version}</span>
                   </div>
                   <div className="truncate">
-                    <span className="text-[#64748B]">File:</span>{' '}
-                    <span className="text-[#172033] font-mono text-[11px] truncate">{contentDetail.file_name}</span>
+                    <span className="text-[#68736B]">File:</span>{' '}
+                    <span className="text-[#242B27] font-mono text-[11px] truncate">{contentDetail.file_name}</span>
                   </div>
                 </div>
 
                 {contentDetail.caption && (
-                  <div className="p-3 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] text-[12.5px] text-[#475569] leading-relaxed">
-                    <span className="text-[11px] font-semibold text-[#64748B] block mb-1 uppercase tracking-wide">
+                  <div className="p-3 bg-[#F7F4EC] rounded-xl border border-[#E4DFD5] text-[12.5px] text-[#242B27] leading-relaxed font-sans">
+                    <span className="text-[11px] font-semibold text-[#68736B] block mb-1 uppercase tracking-wide">
                       Ad Copy / Caption:
                     </span>
                     {contentDetail.caption}
@@ -963,15 +983,15 @@ export const BrandGovernance: React.FC = () => {
               </Card>
 
               {/* Brand Color Swatch Verification Card */}
-              <Card className="p-5 bg-[#FFFFFF] border-[#E2E8F0] space-y-4 shadow-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-[#F1F5F9]">
+              <Card className="p-5 bg-[#FCFAF5] border-[#E4DFD5] space-y-4 shadow-[0_2px_12px_rgba(36,43,39,0.04)]">
+                <div className="flex items-center justify-between pb-2 border-b border-[#EFEBE3]">
                   <div className="flex items-center space-x-2">
-                    <Palette className="w-4 h-4 text-[#315C76]" />
-                    <h3 className="text-[15px] font-bold font-heading text-[#172033]">
+                    <Palette className="w-4 h-4 text-[#244B3F]" />
+                    <h3 className="text-[16px] font-normal font-heading text-[#242B27]">
                       Brand Color Swatch Verification
                     </h3>
                   </div>
-                  <span className="text-[11px] font-semibold text-[#64748B]">Delta Spectrum</span>
+                  <span className="text-[11px] font-semibold text-[#68736B]">Delta Spectrum</span>
                 </div>
 
                 {/* Expected Guidelines Swatches */}
@@ -1063,21 +1083,21 @@ export const BrandGovernance: React.FC = () => {
             <div className="lg:col-span-7 space-y-5">
               
               {/* Compliance & Governance Findings Card */}
-              <Card className="p-5 bg-[#FFFFFF] border-[#E2E8F0] space-y-4 shadow-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-[#F1F5F9]">
+              <Card className="p-5 bg-[#FCFAF5] border-[#E4DFD5] space-y-4 shadow-[0_2px_12px_rgba(36,43,39,0.04)]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-[#EFEBE3]">
                   <div className="flex items-center space-x-2">
-                    <SlidersHorizontal className="w-4 h-4 text-[#315C76]" />
-                    <h3 className="text-[15px] font-bold font-heading text-[#172033]">
+                    <SlidersHorizontal className="w-4 h-4 text-[#244B3F]" />
+                    <h3 className="text-[16px] font-normal font-heading text-[#242B27]">
                       Compliance Findings ({findings.length})
                     </h3>
                   </div>
 
                   {/* Filter Pills */}
-                  <div className="flex items-center space-x-1.5 overflow-x-auto text-[11px]">
+                  <div className="flex items-center space-x-1.5 overflow-x-auto text-[11px] font-sans">
                     <button
                       onClick={() => setFindingFilter('all')}
                       className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
-                        findingFilter === 'all' ? 'bg-[#315C76] text-white' : 'text-[#64748B] hover:bg-[#F1F5F9]'
+                        findingFilter === 'all' ? 'bg-[#244B3F] text-[#FCFAF5]' : 'text-[#68736B] hover:bg-[#F7F4EC]'
                       }`}
                     >
                       All ({findings.length})
@@ -1085,15 +1105,15 @@ export const BrandGovernance: React.FC = () => {
                     <button
                       onClick={() => setFindingFilter('high')}
                       className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
-                        findingFilter === 'high' ? 'bg-[#DC2626] text-white' : 'text-[#64748B] hover:bg-[#F1F5F9]'
+                        findingFilter === 'high' ? 'bg-[#C77E63] text-white' : 'text-[#68736B] hover:bg-[#F7F4EC]'
                       }`}
                     >
-                      High ({findings.filter((f: any) => f.severity === 'High' || f.severity === 'Critical').length})
+                      High ({counts.high})
                     </button>
                     <button
                       onClick={() => setFindingFilter('identity')}
                       className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
-                        findingFilter === 'identity' ? 'bg-[#315C76] text-white' : 'text-[#64748B] hover:bg-[#F1F5F9]'
+                        findingFilter === 'identity' ? 'bg-[#244B3F] text-[#FCFAF5]' : 'text-[#68736B] hover:bg-[#F7F4EC]'
                       }`}
                     >
                       Visual Identity
@@ -1101,7 +1121,7 @@ export const BrandGovernance: React.FC = () => {
                     <button
                       onClick={() => setFindingFilter('claims')}
                       className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
-                        findingFilter === 'claims' ? 'bg-[#315C76] text-white' : 'text-[#64748B] hover:bg-[#F1F5F9]'
+                        findingFilter === 'claims' ? 'bg-[#244B3F] text-[#FCFAF5]' : 'text-[#68736B] hover:bg-[#F7F4EC]'
                       }`}
                     >
                       Copy &amp; Claims
@@ -1109,7 +1129,7 @@ export const BrandGovernance: React.FC = () => {
                     <button
                       onClick={() => setFindingFilter('relevance')}
                       className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
-                        findingFilter === 'relevance' ? 'bg-purple-700 text-white' : 'text-[#64748B] hover:bg-[#F1F5F9]'
+                        findingFilter === 'relevance' ? 'bg-[#C6A66B] text-[#242B27]' : 'text-[#68736B] hover:bg-[#F7F4EC]'
                       }`}
                     >
                       Company Relevance
@@ -1216,15 +1236,15 @@ export const BrandGovernance: React.FC = () => {
               </Card>
 
               {/* Claim Verification Passport Card */}
-              <Card className="p-5 bg-[#FFFFFF] border-[#E2E8F0] space-y-4 shadow-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-[#F1F5F9]">
+              <Card className="p-5 bg-[#FCFAF5] border-[#E4DFD5] space-y-4 shadow-[0_2px_12px_rgba(36,43,39,0.04)]">
+                <div className="flex items-center justify-between pb-2 border-b border-[#EFEBE3]">
                   <div className="flex items-center space-x-2">
-                    <Scale className="w-4 h-4 text-[#315C76]" />
-                    <h3 className="text-[15px] font-bold font-heading text-[#172033]">
+                    <Scale className="w-4 h-4 text-[#244B3F]" />
+                    <h3 className="text-[16px] font-normal font-heading text-[#242B27]">
                       Claim Verification Passport ({claims.length})
                     </h3>
                   </div>
-                  <span className="text-[11px] text-[#64748B]">RAG Grounded Checks</span>
+                  <span className="text-[11px] text-[#68736B]">RAG Grounded Checks</span>
                 </div>
 
                 {claims.length === 0 ? (

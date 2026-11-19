@@ -122,20 +122,21 @@ export const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12 select-none animate-in fade-in duration-300">
+    <div className="max-w-7xl mx-auto space-y-6 pb-12 select-none animate-fade-up font-sans">
       {/* Header */}
       <div>
-        <div className="text-[12px] font-sans uppercase tracking-wider text-[#315C76] font-semibold mb-1">
-          Administration & Governance
+        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#EBF0ED] border border-[#C8D7CF] text-[11.5px] font-semibold text-[#244B3F] mb-2 font-sans">
+          <Settings className="w-3.5 h-3.5" />
+          <span>Administration &amp; Governance</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold font-heading text-[#172033]">Platform Settings & Security</h1>
-        <p className="text-[13.5px] sm:text-[14px] text-[#64748B] mt-0.5">
+        <h1 className="text-[28px] sm:text-[34px] font-normal font-heading text-[#242B27] tracking-tight leading-tight">Platform Settings &amp; Security</h1>
+        <p className="text-[13.5px] sm:text-[14.5px] text-[#68736B] mt-0.5 max-w-2xl leading-relaxed">
           Manage user profiles, organisation metadata, access permissions, and audit logs.
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center space-x-2 border-b border-[#E2E8F0] pb-2 text-[13px] overflow-x-auto">
+      <div className="flex items-center space-x-2 border-b border-[#E4DFD5] pb-2 text-[13px] overflow-x-auto font-sans">
         {[
           { id: 'account', label: 'User Account', icon: User },
           { id: 'org', label: 'Organisation Profile', icon: Building },
@@ -148,10 +149,10 @@ export const SettingsPage: React.FC = () => {
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id as any)}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg font-semibold transition-colors cursor-pointer flex-shrink-0 ${
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-semibold transition-all cursor-pointer flex-shrink-0 ${
                 activeTab === t.id
-                  ? 'bg-[#EAF2F8] text-[#315C76] border border-[#D0E2EC]'
-                  : 'text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFC]'
+                  ? 'bg-[#EBF0ED] text-[#244B3F] border border-[#C8D7CF] shadow-2xs'
+                  : 'text-[#68736B] hover:text-[#242B27] hover:bg-[#F7F4EC]'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />

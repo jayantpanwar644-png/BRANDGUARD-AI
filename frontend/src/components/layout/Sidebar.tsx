@@ -73,12 +73,12 @@ export const Sidebar: React.FC = () => {
   return (
     <>
       <aside
-        className={`h-[calc(100vh-4rem)] sticky top-16 flex flex-col bg-[#FFFFFF] border-r border-[#E2E8F0] transition-all duration-300 z-30 select-none flex-shrink-0 ${
+        className={`h-[calc(100vh-4rem)] sticky top-16 flex flex-col bg-[#FCFAF5] border-r border-[#E4DFD5] transition-all duration-300 z-30 select-none flex-shrink-0 ${
           collapsed ? 'w-20' : 'w-64'
         }`}
       >
       {/* Quick Action: Upload for AI Audit */}
-      <div className="p-3 border-b border-[#F1F5F9] flex-shrink-0">
+      <div className="p-3.5 border-b border-[#EFEBE3] flex-shrink-0">
         <input
           type="file"
           ref={fileInputRef}
@@ -91,13 +91,13 @@ export const Sidebar: React.FC = () => {
         <button
           type="button"
           onClick={handleButtonClick}
-          className={`w-full flex items-center justify-center space-x-2 py-2.5 rounded-xl text-[13.5px] font-semibold bg-[#EAF2F8] text-[#315C76] hover:bg-[#D5E6F3] border border-[#CBD5E1] transition-all cursor-pointer shadow-2xs group ${
+          className={`w-full flex items-center justify-center space-x-2 py-2.5 rounded-xl text-[13.5px] font-semibold bg-[#244B3F] hover:bg-[#1A362D] text-[#FCFAF5] transition-all cursor-pointer shadow-[0_2px_8px_rgba(36,75,63,0.18)] active:scale-[0.98] group ${
             collapsed ? 'px-2' : 'px-3.5'
           }`}
           title="Upload Asset for AI Brand Audit"
         >
-          <PlusCircle className="w-4 h-4 flex-shrink-0 stroke-[2] group-hover:scale-105 transition-transform" />
-          {!collapsed && <span className="truncate">Upload for Audit</span>}
+          <PlusCircle className="w-4 h-4 flex-shrink-0 stroke-[2.2] group-hover:rotate-90 transition-transform duration-300" />
+          {!collapsed && <span className="truncate tracking-wide">Upload for Audit</span>}
         </button>
       </div>
 
@@ -106,7 +106,7 @@ export const Sidebar: React.FC = () => {
         {/* Core Modules */}
         <div>
           {!collapsed && (
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8] px-3 mb-2">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[#93988F] px-3 mb-2 font-sans">
               Brand Intelligence
             </div>
           )}
@@ -118,10 +118,10 @@ export const Sidebar: React.FC = () => {
                   key={item.path}
                   to={item.path}
                   className={({ isActive }) =>
-                    `flex items-center space-x-3 px-3 py-2 rounded-lg text-[14px] transition-colors leading-normal ${
+                    `flex items-center space-x-3 px-3 py-2 rounded-xl text-[13.5px] transition-all duration-150 leading-normal ${
                       isActive
-                        ? 'bg-[#EAF2F8] text-[#315C76] font-semibold border-l-3 border-[#315C76]'
-                        : 'text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFC] font-medium'
+                        ? 'bg-[#EBF0ED] text-[#244B3F] font-semibold border-l-3 border-[#244B3F] shadow-[0_1px_2px_rgba(36,75,63,0.06)]'
+                        : 'text-[#68736B] hover:text-[#242B27] hover:bg-[#F3EFE6] font-medium'
                     }`
                   }
                   title={item.name}
@@ -137,8 +137,8 @@ export const Sidebar: React.FC = () => {
         {/* Organisation & Governance Config */}
         <div>
           {!collapsed && (
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8] px-3 mb-2">
-              Organisation
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[#93988F] px-3 mb-2 font-sans">
+              Governance &amp; Controls
             </div>
           )}
           <nav className="space-y-1">
@@ -149,10 +149,10 @@ export const Sidebar: React.FC = () => {
                   key={item.path}
                   to={item.path}
                   className={({ isActive }) =>
-                    `flex items-center space-x-3 px-3 py-2 rounded-lg text-[14px] transition-colors leading-normal ${
+                    `flex items-center space-x-3 px-3 py-2 rounded-xl text-[13.5px] transition-all duration-150 leading-normal ${
                       isActive
-                        ? 'bg-[#EAF2F8] text-[#315C76] font-semibold border-l-3 border-[#315C76]'
-                        : 'text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFC] font-medium'
+                        ? 'bg-[#EBF0ED] text-[#244B3F] font-semibold border-l-3 border-[#244B3F] shadow-[0_1px_2px_rgba(36,75,63,0.06)]'
+                        : 'text-[#68736B] hover:text-[#242B27] hover:bg-[#F3EFE6] font-medium'
                     }`
                   }
                   title={item.name}
@@ -167,19 +167,19 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Collapse Toggle & User Profile Footer */}
-      <div className="p-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
+      <div className="p-3 border-t border-[#E4DFD5] bg-[#F7F4EC]">
         {!collapsed ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2.5 overflow-hidden">
-              <div className="w-8 h-8 rounded-full bg-[#315C76] text-white flex items-center justify-center text-xs font-bold uppercase shadow-2xs">
+              <div className="w-8 h-8 rounded-full bg-[#244B3F] text-[#FCFAF5] flex items-center justify-center text-xs font-bold uppercase shadow-sm">
                 {user?.full_name?.charAt(0) || 'U'}
               </div>
               <div className="truncate">
-                <div className="text-[13px] font-semibold text-[#172033] truncate">
+                <div className="text-[13px] font-semibold text-[#242B27] truncate font-sans">
                   {user?.full_name || 'Brand Director'}
                 </div>
-                <div className="text-[11px] text-[#64748B] truncate">
-                  {organisation?.name || 'Enterprise'}
+                <div className="text-[11px] text-[#68736B] truncate">
+                  {organisation?.name || 'Nexus Dynamics'}
                 </div>
               </div>
             </div>
@@ -187,14 +187,14 @@ export const Sidebar: React.FC = () => {
             <div className="flex items-center space-x-1">
               <button
                 onClick={() => setCollapsed(true)}
-                className="p-1 rounded-md text-[#94A3B8] hover:text-[#172033] hover:bg-[#E2E8F0] transition-colors cursor-pointer"
+                className="p-1 rounded-md text-[#93988F] hover:text-[#242B27] hover:bg-[#EFECE2] transition-colors cursor-pointer"
                 title="Collapse sidebar"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={handleLogout}
-                className="p-1.5 rounded-lg text-[#94A3B8] hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-[#93988F] hover:text-[#C77E63] hover:bg-[#FAF0EC] transition-colors cursor-pointer"
                 title="Logout"
               >
                 <LogOut className="w-4 h-4" />
@@ -205,14 +205,14 @@ export const Sidebar: React.FC = () => {
           <div className="flex flex-col items-center space-y-2">
             <button
               onClick={() => setCollapsed(false)}
-              className="p-1.5 rounded-lg text-[#94A3B8] hover:text-[#172033] hover:bg-[#E2E8F0] transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-[#93988F] hover:text-[#242B27] hover:bg-[#EFECE2] transition-colors cursor-pointer"
               title="Expand sidebar"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
             <button
               onClick={handleLogout}
-              className="p-1.5 rounded-lg text-[#94A3B8] hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-[#93988F] hover:text-[#C77E63] hover:bg-[#FAF0EC] transition-colors cursor-pointer"
               title="Logout"
             >
               <LogOut className="w-4 h-4" />

@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShieldCheck, ArrowRight, Lock, Mail, Building, User, LogOut, CheckCircle2 } from 'lucide-react';
+import { 
+  ShieldCheck, ArrowRight, Lock, Mail, Building, User, LogOut, 
+  Eye, EyeOff, Globe, Check, Sparkles, X, KeyRound, MessageSquareHeart
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Aurora } from '../components/ui/aurora';
+import { BrandSecurityVisual } from '../components/brand/BrandSecurityVisual';
+import { CommentIntelligenceDemo } from '../components/brand/CommentIntelligenceDemo';
 
 interface LoginProps {
   defaultRegister?: boolean;
@@ -10,6 +15,10 @@ interface LoginProps {
 
 export const Login: React.FC<LoginProps> = ({ defaultRegister = false }) => {
   const [isRegister, setIsRegister] = useState(defaultRegister);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showDemoFeedback, setShowDemoFeedback] = useState(false);
+  
+  // Form states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -19,6 +28,12 @@ export const Login: React.FC<LoginProps> = ({ defaultRegister = false }) => {
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Forgot Password Modal State
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const { login, register, isAuthenticated, user, organisation, logout } = useAuth();
   const navigate = useNavigate();
@@ -55,236 +70,473 @@ export const Login: React.FC<LoginProps> = ({ defaultRegister = false }) => {
     }
   };
 
+  // Secure One-Click Evaluation Login (no password printed on screen)
+  const handleDemoLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await login('admin@nexusdynamics.io', 'SecurePassword2026!');
+      navigate('/app/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Evaluation sandbox connection failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) return;
+    setForgotLoading(true);
+    setTimeout(() => {
+      setForgotLoading(false);
+      setForgotSuccess(true);
+    }, 600);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#F7F9FC] relative overflow-hidden select-none">
-      {/* Subtle Light Theme Atmospheric Aurora */}
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-[#F7F4EC] relative overflow-hidden font-sans">
+      {/* Ambient Cream-to-Sage Gradient Movement */}
       <Aurora
         asBackgroundOnly
         className="fixed inset-0 pointer-events-none z-0"
-        colors={['#183B59', '#315C76', '#263A52']}
-        duration={28}
-        intensity={0.07}
+        colors={['#829887', '#C6A66B', '#244B3F']}
+        duration={42}
+        intensity={0.05}
       />
 
-      <div className="w-full max-w-md mx-auto z-10 relative">
-        {/* Brand identity header */}
-        <div className="text-center mb-6">
-          <Link to="/" className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#315C76] text-white shadow-sm shadow-[#315C76]/20 mb-3 hover:scale-102 transition-transform">
-            <ShieldCheck className="w-7 h-7 stroke-[2]" />
-          </Link>
-          <h1 className="text-2xl font-bold font-heading text-[#172033] tracking-tight">BrandGuard AI</h1>
-          <p className="text-[13px] text-[#64748B] mt-1 max-w-xs mx-auto leading-relaxed">
-            Protecting Brand Identity Before Publication and Public Trust After Publication.
-          </p>
-        </div>
-
-        {/* Auth Card */}
-        <div className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-2xl p-6 sm:p-8 shadow-sm">
-          {/* Already Signed In Indicator */}
-          {isAuthenticated && (
-            <div className="mb-6 p-4 rounded-xl bg-[#F0FDF4] border border-emerald-200 text-xs text-[#172033] space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="font-semibold text-emerald-900">Already Signed In</span>
+      <div className="w-full max-w-7xl mx-auto z-10 relative">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          
+          {/* ========================================================= */}
+          {/* LEFT SIDE — BRAND EXPERIENCE (50–55% of desktop)           */}
+          {/* ========================================================= */}
+          <div className="lg:col-span-7 space-y-6 animate-fade-up">
+            
+            {/* Brand Logo & Editorial Header */}
+            <div>
+              <Link to="/" className="inline-flex items-center space-x-3 group mb-4">
+                <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-[#244B3F] to-[#18382F] text-[#FCFAF5] flex items-center justify-center shadow-[0_4px_16px_rgba(36,75,63,0.25)] group-hover:scale-105 transition-transform overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#FCFAF5]/25 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                  <ShieldCheck className="w-6 h-6 stroke-[2.2]" />
                 </div>
-                <span className="text-[11px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md font-medium">Active Session</span>
-              </div>
+                <div>
+                  <span className="text-2xl sm:text-3xl font-normal font-heading text-[#242B27] tracking-tight">BrandGuard AI</span>
+                  <div className="text-[11.5px] font-semibold text-[#829887] uppercase tracking-wider">Enterprise Brand Governance</div>
+                </div>
+              </Link>
+
+              <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-normal font-heading text-[#242B27] leading-[1.18] tracking-tight">
+                Protect Your Brand. Build Lasting Trust.
+              </h1>
               
-              <div className="text-[12.5px] text-[#334155] leading-relaxed">
-                You are currently signed in as <strong className="text-[#0F172A]">{user?.full_name || user?.email}</strong> ({user?.role || 'Brand Manager'}) at <strong className="text-[#0F172A]">{organisation?.name || 'Your Company'}</strong>.
-              </div>
-
-              <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => navigate('/app/dashboard')}
-                  className="flex-1 py-2.5 px-3 bg-[#315C76] hover:bg-[#183B59] text-white rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors cursor-pointer shadow-2xs"
-                >
-                  <span>Continue to Command Center</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    logout();
-                    setEmail('');
-                    setPassword('');
-                  }}
-                  className="py-2.5 px-3 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition-colors cursor-pointer"
-                  title="Sign out of current account and log in as someone else"
-                >
-                  <LogOut className="w-3 h-3" />
-                  <span>Switch Account</span>
-                </button>
-              </div>
-
-              <div className="pt-1 text-center border-t border-emerald-200/60 text-[11px] text-[#64748B]">
-                Or enter new credentials below to switch accounts immediately
-              </div>
+              <p className="text-[14.5px] sm:text-[15.5px] text-[#69756C] mt-3 max-w-xl leading-relaxed">
+                Intelligent brand governance and reputation protection, before and after publication.
+              </p>
             </div>
-          )}
 
-          {/* Tab Selector */}
-          <div className="grid grid-cols-2 p-1 bg-[#F1F5F9] rounded-xl mb-5 border border-[#E2E8F0]">
-            <button
-              type="button"
-              onClick={() => { setIsRegister(false); setError(''); }}
-              className={`py-2 text-[13px] font-semibold rounded-lg transition-all ${
-                !isRegister ? 'bg-[#FFFFFF] text-[#172033] shadow-xs' : 'text-[#64748B] hover:text-[#172033]'
-              }`}
-            >
-              Company Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => { setIsRegister(true); setError(''); }}
-              className={`py-2 text-[13px] font-semibold rounded-lg transition-all ${
-                isRegister ? 'bg-[#FFFFFF] text-[#172033] shadow-xs' : 'text-[#64748B] hover:text-[#172033]'
-              }`}
-            >
-              Register Company
-            </button>
+            {/* Interactive View Toggle between Security Visual & Feedback Intelligence */}
+            <div className="flex items-center space-x-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowDemoFeedback(false)}
+                className={`px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
+                  !showDemoFeedback
+                    ? 'bg-[#244B3F] text-[#FCFAF5] shadow-xs'
+                    : 'bg-[#FCFAF5] text-[#69756C] border border-[#E4DFD5] hover:text-[#242B27]'
+                }`}
+              >
+                Brand Security Architecture
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDemoFeedback(true)}
+                className={`px-3 py-1.5 rounded-xl text-[12px] font-semibold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                  showDemoFeedback
+                    ? 'bg-[#244B3F] text-[#FCFAF5] shadow-xs'
+                    : 'bg-[#FCFAF5] text-[#69756C] border border-[#E4DFD5] hover:text-[#242B27]'
+                }`}
+              >
+                <MessageSquareHeart className="w-3.5 h-3.5" />
+                <span>Customer Feedback Intelligence Preview</span>
+              </button>
+            </div>
+
+            {/* Display Either the Abstract Animated Security Visual OR Customer Feedback Demo */}
+            {!showDemoFeedback ? (
+              <div className="bg-[#FCFAF5] border border-[#E4E1D7] rounded-3xl p-6 sm:p-8 shadow-[0_12px_40px_rgba(36,43,39,0.06)] relative overflow-hidden">
+                <BrandSecurityVisual />
+                
+                {/* Feature Statement Bar */}
+                <div className="mt-4 pt-4 border-t border-[#EFEBE3] flex items-center justify-center">
+                  <div className="inline-flex items-center space-x-2 sm:space-x-3 px-4 py-2 rounded-full bg-[#F7F4EC] border border-[#E4DFD5] text-[12px] sm:text-[12.5px] font-semibold text-[#244B3F]">
+                    <span>Monitor</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#C6A66B]" />
+                    <span>Analyze</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#829887]" />
+                    <span>Protect</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#C6A66B]" />
+                    <span>Grow</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="animate-fade-up">
+                <CommentIntelligenceDemo />
+              </div>
+            )}
           </div>
 
-          {error && (
-            <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-[13px]">
-              {error}
-            </div>
-          )}
+          {/* ========================================================= */}
+          {/* RIGHT SIDE — AUTHENTICATION CARD                          */}
+          {/* ========================================================= */}
+          <div className="lg:col-span-5 w-full max-w-md mx-auto animate-fade-up" style={{ animationDelay: '0.1s' }}>
+            
+            {/* Premium Ivory Sign-in Card */}
+            <div className="bg-[#FCFAF5] border border-[#E4E1D7] rounded-3xl p-6 sm:p-8 shadow-[0_12px_40px_rgba(36,43,39,0.06)]">
+              
+              {/* Card Header */}
+              <div className="mb-6">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-[#EBF0ED] border border-[#C8D7CF] text-[#244B3F] mb-3">
+                  <KeyRound className="w-5 h-5 stroke-[2]" />
+                </div>
+                <h2 className="text-2xl sm:text-[26px] font-normal font-heading text-[#242B27] tracking-tight">
+                  {isRegister ? 'Register Company' : 'Welcome Back'}
+                </h2>
+                <p className="text-[13px] text-[#69756C] mt-1">
+                  {isRegister ? 'Set up a new verified enterprise workspace' : 'Sign in to your enterprise workspace'}
+                </p>
+              </div>
 
-          <form onSubmit={handleSubmit} className="space-y-3.5">
-            {isRegister && (
-              <>
+              {/* Already Signed In Indicator */}
+              {isAuthenticated && (
+                <div className="mb-6 p-4 rounded-2xl bg-[#EBF0ED] border border-[#C8D7CF] text-xs text-[#242B27] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#244B3F] animate-pulse" />
+                      <span className="font-semibold text-[#244B3F]">Active Session Detected</span>
+                    </div>
+                    <span className="text-[11px] text-[#244B3F] bg-[#FCFAF5] px-2 py-0.5 rounded-md font-semibold border border-[#C8D7CF]">Signed In</span>
+                  </div>
+                  
+                  <div className="text-[12.5px] text-[#344D3D] leading-relaxed">
+                    Signed in as <strong className="text-[#242B27]">{user?.full_name || user?.email}</strong> at <strong className="text-[#242B27]">{organisation?.name || 'Your Company'}</strong>.
+                  </div>
+
+                  <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/app/dashboard')}
+                      className="flex-1 py-2 px-3 bg-[#244B3F] hover:bg-[#18382F] text-[#FCFAF5] rounded-xl text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all cursor-pointer shadow-2xs active:scale-[0.98]"
+                    >
+                      <span>Go to Dashboard</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        logout();
+                        setEmail('');
+                        setPassword('');
+                      }}
+                      className="py-2 px-3 bg-[#FCFAF5] hover:bg-[#FAF0EC] text-[#C77E63] border border-[#ECCBC0] rounded-xl text-xs font-semibold flex items-center justify-center space-x-1 transition-colors cursor-pointer"
+                    >
+                      <LogOut className="w-3 h-3" />
+                      <span>Switch</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab Selector */}
+              <div className="grid grid-cols-2 p-1 bg-[#F7F4EC] rounded-2xl mb-5 border border-[#E4DFD5]">
+                <button
+                  type="button"
+                  onClick={() => { setIsRegister(false); setError(''); }}
+                  className={`py-2 text-[13px] font-semibold rounded-xl transition-all cursor-pointer ${
+                    !isRegister ? 'bg-[#FCFAF5] text-[#244B3F] shadow-xs border border-[#E4DFD5]' : 'text-[#69756C] hover:text-[#242B27]'
+                  }`}
+                >
+                  Company Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIsRegister(true); setError(''); }}
+                  className={`py-2 text-[13px] font-semibold rounded-xl transition-all cursor-pointer ${
+                    isRegister ? 'bg-[#FCFAF5] text-[#244B3F] shadow-xs border border-[#E4DFD5]' : 'text-[#69756C] hover:text-[#242B27]'
+                  }`}
+                >
+                  Register Company
+                </button>
+              </div>
+
+              {/* Error Banner */}
+              {error && (
+                <div className="mb-4 p-3 rounded-xl bg-[#FAF0EC] border border-[#ECCBC0] text-[#B85E42] text-[13px] leading-relaxed animate-fade-in flex items-start space-x-2">
+                  <span className="font-semibold text-xs mt-0.5">Notice:</span>
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* Authentication Form */}
+              <form onSubmit={handleSubmit} className="space-y-3.5">
+                {isRegister && (
+                  <>
+                    <div>
+                      <label className="block text-[13px] font-semibold text-[#242B27] mb-1">Company Name *</label>
+                      <div className="relative">
+                        <Building className="w-4 h-4 text-[#829887] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          type="text"
+                          required
+                          value={companyName}
+                          onChange={(e) => setCompanyName(e.target.value)}
+                          placeholder="Acme Corporation"
+                          className="w-full bg-[#FCFAF5] border border-[#E4DFD5] rounded-xl pl-9 pr-3 py-2 text-[13.5px] text-[#242B27] placeholder-[#93988F] focus:outline-none focus:border-[#244B3F] focus:ring-1 focus:ring-[#244B3F] transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[13px] font-semibold text-[#242B27] mb-1">Full Name</label>
+                      <div className="relative">
+                        <User className="w-4 h-4 text-[#829887] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          placeholder="Brand Director / Manager"
+                          className="w-full bg-[#FCFAF5] border border-[#E4DFD5] rounded-xl pl-9 pr-3 py-2 text-[13.5px] text-[#242B27] placeholder-[#93988F] focus:outline-none focus:border-[#244B3F] focus:ring-1 focus:ring-[#244B3F] transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[13px] font-semibold text-[#242B27] mb-1">Industry</label>
+                        <select
+                          value={industry}
+                          onChange={(e) => setIndustry(e.target.value)}
+                          className="w-full bg-[#FCFAF5] border border-[#E4DFD5] rounded-xl px-2.5 py-2 text-[13px] text-[#242B27] focus:outline-none focus:border-[#244B3F] focus:ring-1 focus:ring-[#244B3F] transition-all"
+                        >
+                          <option value="Technology / SaaS">Technology / SaaS</option>
+                          <option value="Healthcare & Bio">Healthcare & Bio</option>
+                          <option value="Financial Services">Financial Services</option>
+                          <option value="Consumer & Retail">Consumer & Retail</option>
+                          <option value="Manufacturing">Manufacturing</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[13px] font-semibold text-[#242B27] mb-1">Website (Optional)</label>
+                        <div className="relative">
+                          <Globe className="w-4 h-4 text-[#829887] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <input
+                            type="text"
+                            value={website}
+                            onChange={(e) => setWebsite(e.target.value)}
+                            placeholder="acme.com"
+                            className="w-full bg-[#FCFAF5] border border-[#E4DFD5] rounded-xl pl-8 pr-2.5 py-2 text-[13px] text-[#242B27] placeholder-[#93988F] focus:outline-none focus:border-[#244B3F] focus:ring-1 focus:ring-[#244B3F] transition-all"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Email Field */}
                 <div>
-                  <label className="block text-[13px] font-semibold text-[#475569] mb-1">Company Name *</label>
+                  <label className="block text-[13px] font-semibold text-[#242B27] mb-1">Official Company Email *</label>
                   <div className="relative">
-                    <Building className="w-4 h-4 text-[#94A3B8] absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Mail className="w-4 h-4 text-[#829887] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
-                      type="text"
+                      type="email"
                       required
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      placeholder="e.g. Acme Corporation"
-                      className="w-full bg-[#FFFFFF] border border-[#CBD5E1] rounded-lg pl-9 pr-3 py-2 text-[13px] text-[#172033] placeholder-[#94A3B8] focus:outline-none focus:border-[#315C76] transition-colors"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="corporate@company.com"
+                      className="w-full bg-[#FCFAF5] border border-[#E4DFD5] rounded-xl pl-9 pr-3 py-2 text-[13.5px] text-[#242B27] placeholder-[#93988F] focus:outline-none focus:border-[#244B3F] focus:ring-1 focus:ring-[#244B3F] transition-all"
                     />
                   </div>
                 </div>
 
+                {/* Password Field with Show/Hide Toggle */}
                 <div>
-                  <label className="block text-[13px] font-semibold text-[#475569] mb-1">Full Name</label>
+                  <label className="block text-[13px] font-semibold text-[#242B27] mb-1">Password *</label>
                   <div className="relative">
-                    <User className="w-4 h-4 text-[#94A3B8] absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Lock className="w-4 h-4 text-[#829887] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Brand Director / Manager"
-                      className="w-full bg-[#FFFFFF] border border-[#CBD5E1] rounded-lg pl-9 pr-3 py-2 text-[13px] text-[#172033] placeholder-[#94A3B8] focus:outline-none focus:border-[#315C76] transition-colors"
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••••••"
+                      className="w-full bg-[#FCFAF5] border border-[#E4DFD5] rounded-xl pl-9 pr-10 py-2 text-[13.5px] text-[#242B27] placeholder-[#93988F] focus:outline-none focus:border-[#244B3F] focus:ring-1 focus:ring-[#244B3F] transition-all"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#829887] hover:text-[#242B27] transition-colors p-0.5 rounded cursor-pointer"
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4 stroke-[2]" />
+                      ) : (
+                        <Eye className="w-4 h-4 stroke-[2]" />
+                      )}
+                    </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[13px] font-semibold text-[#475569] mb-1">Industry</label>
-                    <input
-                      type="text"
-                      value={industry}
-                      onChange={(e) => setIndustry(e.target.value)}
-                      placeholder="Technology, FMCG"
-                      className="w-full bg-[#FFFFFF] border border-[#CBD5E1] rounded-lg px-3 py-2 text-[13px] text-[#172033] placeholder-[#94A3B8] focus:outline-none focus:border-[#315C76] transition-colors"
-                    />
+                {/* Remember Me & Forgot Password Link */}
+                {!isRegister && (
+                  <div className="flex items-center justify-between text-[13px] pt-1">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={rememberMe}
+                      onClick={() => setRememberMe(!rememberMe)}
+                      className="flex items-center text-[#69756C] hover:text-[#242B27] cursor-pointer select-none bg-transparent border-0 p-0 text-left"
+                    >
+                      <div
+                        className={`w-4 h-4 rounded border flex items-center justify-center mr-2 transition-all cursor-pointer ${
+                          rememberMe
+                            ? 'bg-[#244B3F] border-[#244B3F] text-[#FCFAF5]'
+                            : 'bg-[#FCFAF5] border-[#E4DFD5]'
+                        }`}
+                      >
+                        {rememberMe && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                      <span>Remember session</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotEmail(email);
+                        setForgotSuccess(false);
+                        setIsForgotModalOpen(true);
+                      }}
+                      className="text-[#244B3F] hover:text-[#18382F] transition-colors font-semibold cursor-pointer"
+                    >
+                      Forgot Password?
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-[13px] font-semibold text-[#475569] mb-1">Website (Optional)</label>
-                    <input
-                      type="text"
-                      value={website}
-                      onChange={(e) => setWebsite(e.target.value)}
-                      placeholder="https://acme.com"
-                      className="w-full bg-[#FFFFFF] border border-[#CBD5E1] rounded-lg px-3 py-2 text-[13px] text-[#172033] placeholder-[#94A3B8] focus:outline-none focus:border-[#315C76] transition-colors"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
+                )}
 
-            <div>
-              <label className="block text-[13px] font-semibold text-[#475569] mb-1">Official Company Email *</label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-[#94A3B8] absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@nexusdynamics.io"
-                  className="w-full bg-[#FFFFFF] border border-[#CBD5E1] rounded-lg pl-9 pr-3 py-2 text-[13px] text-[#172033] placeholder-[#94A3B8] focus:outline-none focus:border-[#315C76] transition-colors"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[13px] font-semibold text-[#475569] mb-1">Password *</label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-[#94A3B8] absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full bg-[#FFFFFF] border border-[#CBD5E1] rounded-lg pl-9 pr-3 py-2 text-[13px] text-[#172033] placeholder-[#94A3B8] focus:outline-none focus:border-[#315C76] transition-colors"
-                />
-              </div>
-            </div>
-
-            {!isRegister && (
-              <div className="flex items-center justify-between text-[13px] pt-1">
-                <label className="flex items-center text-[#64748B] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded bg-[#FFFFFF] border-[#CBD5E1] text-[#315C76] mr-2 focus:ring-0"
-                  />
-                  Remember session
-                </label>
+                {/* Submit Button */}
                 <button
-                  type="button"
-                  onClick={() => alert("Password reset link dispatched to your registered email.")}
-                  className="text-[#315C76] hover:text-[#183B59] transition-colors font-semibold"
+                  type="submit"
+                  disabled={loading}
+                  className="w-full mt-2 group flex items-center justify-center space-x-2 py-3 px-4 bg-[#244B3F] hover:bg-[#18382F] disabled:opacity-50 text-[#FCFAF5] text-[14px] font-semibold rounded-xl shadow-[0_2px_8px_rgba(36,75,63,0.18)] transition-all cursor-pointer active:scale-[0.98]"
                 >
-                  Forgot Password?
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-[#FCFAF5] border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <span>{isRegister ? 'Complete Registration & Setup' : 'Secure Enterprise Sign In'}</span>
+                      <ArrowRight className="w-4 h-4 stroke-[2] group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
                 </button>
-              </div>
-            )}
+              </form>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full mt-2 flex items-center justify-center space-x-2 py-2.5 px-4 bg-[#315C76] hover:bg-[#183B59] disabled:opacity-50 text-white text-[14px] font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
-            >
-              <span>{loading ? 'Authenticating...' : isRegister ? 'Complete Registration & Setup' : 'Secure Enterprise Sign In'}</span>
-              <ArrowRight className="w-4 h-4 stroke-[2]" />
-            </button>
-          </form>
+              {/* Secure Quick Evaluation Access Button (replaces insecure plain text credentials) */}
+              {!isRegister && (
+                <div className="mt-5 pt-3.5 border-t border-[#EFEBE3] text-center">
+                  <button
+                    type="button"
+                    onClick={handleDemoLogin}
+                    disabled={loading}
+                    className="w-full py-2 px-3 rounded-xl bg-[#F7F4EC] hover:bg-[#EBF0ED] border border-[#E4DFD5] hover:border-[#C8D7CF] text-[12px] font-semibold text-[#244B3F] flex items-center justify-center space-x-1.5 transition-all cursor-pointer active:scale-[0.98]"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-[#C6A66B]" />
+                    <span>Quick Evaluation Access (Nexus Dynamics Demo)</span>
+                  </button>
+                  <p className="text-[11px] text-[#93988F] mt-1.5">
+                    Preconfigured credentials loaded via secure token gateway
+                  </p>
+                </div>
+              )}
+            </div>
 
-          {/* Quick Demo Credentials */}
-          <div className="mt-5 pt-3 border-t border-[#F1F5F9] text-center">
-            <span className="text-[12px] text-[#64748B]">
-              Demo credentials: <code className="text-[#172033] font-mono bg-[#F1F5F9] px-1.5 py-0.5 rounded text-[11px]">admin@nexusdynamics.io</code> / <code className="text-[#172033] font-mono bg-[#F1F5F9] px-1.5 py-0.5 rounded text-[11px]">SecurePassword2026!</code>
-            </span>
+            <div className="text-center mt-4">
+              <Link to="/" className="text-[13px] font-medium text-[#69756C] hover:text-[#242B27] transition-colors">
+                ← Return to BrandGuard AI Public Homepage
+              </Link>
+            </div>
           </div>
-        </div>
 
-        <div className="text-center mt-4">
-          <Link to="/" className="text-[13px] font-medium text-[#64748B] hover:text-[#172033] transition-colors">
-            ← Return to BrandGuard AI Public Homepage
-          </Link>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {isForgotModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
+          <div className="bg-[#FCFAF5] border border-[#E4DFD5] rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-[0_16px_50px_rgba(0,0,0,0.15)] relative animate-fade-up">
+            <button
+              type="button"
+              onClick={() => setIsForgotModalOpen(false)}
+              className="absolute top-5 right-5 text-[#829887] hover:text-[#242B27] p-1 rounded-lg hover:bg-[#F7F4EC] transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-10 h-10 rounded-xl bg-[#EBF0ED] border border-[#C8D7CF] text-[#244B3F] flex items-center justify-center mb-3">
+              <Lock className="w-5 h-5 stroke-[2]" />
+            </div>
+
+            <h3 className="text-xl font-normal font-heading text-[#242B27]">Reset Workspace Access</h3>
+            <p className="text-[13px] text-[#69756C] mt-1 leading-relaxed">
+              Enter your corporate email address to receive secure identity verification instructions.
+            </p>
+
+            {forgotSuccess ? (
+              <div className="mt-4 p-4 rounded-2xl bg-[#EBF0ED] border border-[#C8D7CF] space-y-3">
+                <div className="flex items-center space-x-2 text-[#244B3F] text-[13px] font-semibold">
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>Recovery Dispatch Initiated</span>
+                </div>
+                <p className="text-[12.5px] text-[#344D3D] leading-relaxed">
+                  If an active enterprise account is registered for <strong className="text-[#242B27]">{forgotEmail}</strong>, password reset instructions have been dispatched to your corporate inbox.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsForgotModalOpen(false)}
+                  className="w-full py-2 bg-[#244B3F] hover:bg-[#18382F] text-[#FCFAF5] text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                >
+                  Return to Sign In
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPasswordSubmit} className="mt-4 space-y-3">
+                <div>
+                  <label className="block text-[12.5px] font-semibold text-[#242B27] mb-1">Company Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="corporate@company.com"
+                    className="w-full bg-[#FCFAF5] border border-[#E4DFD5] rounded-xl px-3 py-2 text-[13px] text-[#242B27] placeholder-[#93988F] focus:outline-none focus:border-[#244B3F] focus:ring-1 focus:ring-[#244B3F]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={forgotLoading}
+                  className="w-full py-2.5 bg-[#244B3F] hover:bg-[#18382F] disabled:opacity-50 text-[#FCFAF5] text-[13px] font-semibold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center space-x-2"
+                >
+                  {forgotLoading ? (
+                    <div className="w-4 h-4 border-2 border-[#FCFAF5] border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <span>Dispatch Recovery Link</span>
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

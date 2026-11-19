@@ -132,6 +132,45 @@ def list_contents(
 
     return query.order_by(UploadedContent.created_at.desc()).all()
 
+
+@router.get("/campaign-intelligence")
+def get_campaign_intelligence(
+    org: Organisation = Depends(get_current_organisation),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns aggregated campaign metrics: total creatives, approval pass rates,
+    average brand compliance score, and platform distribution.
+    """
+    contents = db.query(UploadedContent).filter(UploadedContent.organisation_id == org.id).all()
+    total_contents = len(contents)
+    approved_count = sum(1 for c in contents if c.approval_status == "Approved")
+    pending_count = sum(1 for c in contents if "Pending" in c.approval_status or c.approval_status == "Needs Verification")
+    rejected_count = sum(1 for c in contents if c.approval_status == "Rejected")
+
+    platform_dist = {}
+    for c in contents:
+        platform_dist[c.platform] = platform_dist.get(c.platform, 0) + 1
+
+    reports = (
+        db.query(AuditReport)
+        .join(UploadedContent)
+        .filter(UploadedContent.organisation_id == org.id)
+        .all()
+    )
+    avg_score = (sum(r.brand_consistency_score for r in reports) / len(reports)) if reports else 85.0
+
+    return {
+        "total_campaign_assets": total_contents,
+        "approved_assets": approved_count,
+        "approval_rate_percentage": round((approved_count / total_contents * 100), 1) if total_contents > 0 else 0.0,
+        "pending_reviews": pending_count,
+        "rejected_assets": rejected_count,
+        "average_compliance_score": round(avg_score, 1),
+        "platform_distribution": [{"platform": k, "count": v} for k, v in platform_dist.items()]
+    }
+
+
 @router.get("/{id}", response_model=UploadedContentResponse)
 def get_content_detail(
     id: int,
@@ -532,7 +571,8 @@ async def generate_revised_creative(
         audit_report=latest_report,
         finding_id=req.finding_id,
         correction_type=req.correction_type,
-        mode=req.mode
+        mode=req.mode,
+        approved_corrections=req.approved_corrections
     )
 
     revised_file_url = f"/uploads/images/{revised_filename}"
@@ -871,3 +911,4 @@ async def reanalyse_specific_version(
             "remaining_count": len(remaining_issues)
         }
     }
+

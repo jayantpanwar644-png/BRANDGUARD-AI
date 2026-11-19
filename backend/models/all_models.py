@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, Integer, String, Text, Float, Boolean, DateTime, ForeignKey, Enum, JSON
+    Column, Integer, String, Text, Float, Boolean, DateTime, ForeignKey, Enum, JSON, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
 from backend.core.database import Base
@@ -380,14 +380,16 @@ class ConnectedSocialAccount(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     organisation_id = Column(Integer, ForeignKey("organisations.id", ondelete="CASCADE"), nullable=False, index=True)
-    platform = Column(String(50), nullable=False)  # Instagram, Facebook, LinkedIn, Twitter
+    platform = Column(String(50), nullable=False)  # Instagram, Facebook, LinkedIn, Twitter, YouTube
     account_name = Column(String(255), nullable=False)
     account_id = Column(String(100), nullable=False)
-    status = Column(String(50), default="Not Connected")  # Connected, Not Connected, Token Expired, Setup Required
-    permissions = Column(String(255), default="pages_read_engagement, pages_manage_posts, instagram_basic")
-    access_token = Column(String(500), nullable=True)
+    status = Column(String(50), default="Not Connected")  # Connected, Not Connected, Token Expired, Setup Required, Re-authorization Required
+    permissions = Column(Text, default="pages_read_engagement, pages_manage_posts, instagram_basic")
+    access_token = Column(Text, nullable=True)  # Fernet AES-encrypted
+    refresh_token = Column(Text, nullable=True)  # Fernet AES-encrypted
     token_expires_at = Column(DateTime, nullable=True)
     last_synced_at = Column(DateTime, nullable=True)
+    profile_picture_url = Column(String(500), nullable=True)
     connection_error = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utc_now)
 
@@ -537,3 +539,36 @@ class ChatMessage(Base):
     created_at = Column(DateTime, default=utc_now)
 
     conversation = relationship("ChatConversation", back_populates="messages")
+
+
+class SocialComment(Base):
+    __tablename__ = "social_comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organisation_id = Column(Integer, ForeignKey("organisations.id", ondelete="CASCADE"), nullable=False, index=True)
+    social_account_id = Column(Integer, ForeignKey("connected_social_accounts.id", ondelete="CASCADE"), nullable=True)
+    platform = Column(String(50), nullable=False)
+    external_comment_id = Column(String(255), nullable=False)
+    external_post_id = Column(String(255), nullable=True)
+    author_name = Column(String(255), nullable=True)
+    author_id = Column(String(255), nullable=True)
+    comment_text = Column(Text, nullable=False)
+    parent_comment_id = Column(String(255), nullable=True)
+    is_reply = Column(Boolean, default=False)
+    like_count = Column(Integer, default=0)
+    sentiment = Column(String(50), nullable=True)
+    sentiment_confidence = Column(Float, nullable=True)
+    topic = Column(String(100), nullable=True)
+    is_spam = Column(Boolean, default=False)
+    urgency_level = Column(String(20), default="Low")
+    ai_analyzed = Column(Boolean, default=False)
+    reply_text = Column(Text, nullable=True)
+    reply_status = Column(String(50), default="None")
+    reply_approved_by = Column(String(100), nullable=True)
+    replied_at = Column(DateTime, nullable=True)
+    comment_timestamp = Column(DateTime, nullable=True)
+    synced_at = Column(DateTime, default=utc_now)
+
+    __table_args__ = (UniqueConstraint("platform", "external_comment_id", name="uq_social_comment"),)
+
+    organisation = relationship("Organisation", backref="social_comments")

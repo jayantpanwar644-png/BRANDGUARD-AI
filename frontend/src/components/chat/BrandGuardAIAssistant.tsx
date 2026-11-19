@@ -342,20 +342,20 @@ export const BrandGuardAIAssistant: React.FC = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 group flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-[#0052FF] to-[#3B82F6] text-white rounded-full shadow-2xl hover:shadow-blue-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer border border-white/20"
+          className="fixed bottom-6 right-6 z-50 group flex items-center gap-3 px-4.5 py-3 bg-[#244B3F] hover:bg-[#1A362D] text-[#FCFAF5] rounded-full shadow-[0_8px_28px_rgba(36,75,63,0.28)] hover:shadow-[0_12px_32px_rgba(36,75,63,0.36)] hover:-translate-y-0.5 active:scale-95 transition-all duration-200 cursor-pointer border border-[#C6A66B]/30"
           aria-label="Open BrandGuard AI Assistant & Copilot"
         >
           <div className="relative">
-            <Bot className="w-5 h-5 text-white" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#10B981] rounded-full border-2 border-[#0052FF] animate-pulse" />
+            <Bot className="w-5 h-5 text-[#FCFAF5]" />
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#C6A66B] rounded-full border-2 border-[#244B3F] animate-pulse" />
           </div>
           <div className="flex flex-col text-left">
-            <span className="text-xs font-bold tracking-tight">AI Copilot</span>
-            <span className="text-[10px] text-white/80 font-medium leading-none">
+            <span className="text-xs font-bold tracking-tight font-sans">AI Copilot</span>
+            <span className="text-[10px] text-[#FCFAF5]/80 font-medium leading-none">
               {brandProfile?.company_name || organisation?.name || 'BrandGuard'}
             </span>
           </div>
-          <Sparkles className="w-4 h-4 text-amber-300 ml-0.5 animate-spin-slow" />
+          <Sparkles className="w-4 h-4 text-[#C6A66B] ml-0.5 transition-transform group-hover:rotate-12" />
         </button>
       )}
 
@@ -364,26 +364,26 @@ export const BrandGuardAIAssistant: React.FC = () => {
       {/* ───────────────────────────────────────────────────────────────────── */}
       {isOpen && (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex flex-col bg-white rounded-2xl shadow-2xl border border-[#E2E8F0] overflow-hidden transition-all duration-300 ease-in-out ${
+          className={`fixed bottom-6 right-6 z-50 flex flex-col bg-[#FCFAF5] rounded-2xl shadow-[0_16px_48px_rgba(36,43,39,0.18)] border border-[#E4DFD5] overflow-hidden transition-all duration-300 ease-in-out ${
             isExpanded
               ? 'w-[720px] max-w-[calc(100vw-2rem)] h-[760px] max-h-[calc(100vh-5rem)]'
               : 'w-[430px] max-w-[calc(100vw-2rem)] h-[620px] max-h-[calc(100vh-5rem)]'
           }`}
         >
           {/* ───────────────── HEADER ───────────────── */}
-          <div className="bg-gradient-to-r from-[#0F172A] to-[#1E293B] text-white px-4 py-3 flex items-center justify-between border-b border-slate-700/50">
+          <div className="bg-[#1A362D] text-[#FCFAF5] px-4 py-3 flex items-center justify-between border-b border-[#244B3F]">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#0052FF] flex items-center justify-center shadow-inner">
-                <Bot className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 rounded-xl bg-[#244B3F] flex items-center justify-center shadow-inner border border-[#C6A66B]/30">
+                <Bot className="w-4.5 h-4.5 text-[#FCFAF5]" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-bold tracking-tight">BrandGuard AI</span>
-                  <span className="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded text-[10px] font-mono">
+                  <span className="text-sm font-semibold tracking-tight font-sans">BrandGuard AI</span>
+                  <span className="px-1.5 py-0.2 bg-[#C6A66B]/20 text-[#C6A66B] border border-[#C6A66B]/30 rounded text-[10px] font-mono">
                     ONLINE
                   </span>
                 </div>
-                <div className="text-[11px] text-slate-400 truncate max-w-[170px]">
+                <div className="text-[11px] text-[#829887] truncate max-w-[170px]">
                   {brandProfile?.company_name || organisation?.name || 'Brand Governance'}
                 </div>
               </div>
@@ -660,16 +660,16 @@ export const BrandGuardAIAssistant: React.FC = () => {
 
           {/* ───────────────── SUGGESTED PROMPT CHIPS ───────────────── */}
           {suggestedPrompts.length > 0 && !isLoading && (
-            <div className="px-3 py-2 bg-white border-t border-[#E2E8F0] flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-              <span className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider flex-shrink-0 flex items-center gap-1">
-                <Sparkles className="w-2.5 h-2.5 text-amber-500" />
+            <div className="px-3 py-2 bg-[#FCFAF5] border-t border-[#E4DFD5] flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              <span className="text-[10px] font-bold text-[#829887] uppercase tracking-wider flex-shrink-0 flex items-center gap-1">
+                <Sparkles className="w-2.5 h-2.5 text-[#C6A66B]" />
                 Ideas:
               </span>
               {suggestedPrompts.map((p, pIdx) => (
                 <button
                   key={pIdx}
                   onClick={() => handleSendMessage(p.prompt)}
-                  className="px-2.5 py-1 bg-[#F1F5F9] hover:bg-blue-50 hover:text-[#0052FF] hover:border-blue-200 border border-slate-200/80 rounded-full text-xs font-medium text-[#475569] whitespace-nowrap transition-colors flex-shrink-0 cursor-pointer shadow-2xs"
+                  className="px-2.5 py-1 bg-[#F7F4EC] hover:bg-[#EBF0ED] hover:text-[#244B3F] hover:border-[#C8D7CF] border border-[#E4DFD5] rounded-full text-xs font-medium text-[#68736B] whitespace-nowrap transition-colors flex-shrink-0 cursor-pointer shadow-2xs"
                 >
                   {p.label}
                 </button>
@@ -678,8 +678,8 @@ export const BrandGuardAIAssistant: React.FC = () => {
           )}
 
           {/* ───────────────── INPUT BAR ───────────────── */}
-          <div className="p-3 bg-white border-t border-[#E2E8F0]">
-            <div className="flex items-end gap-2 bg-[#F8FAFC] border border-[#CBD5E1] focus-within:border-[#0052FF] focus-within:ring-2 focus-within:ring-blue-100 rounded-xl px-3 py-2 transition-all">
+          <div className="p-3 bg-[#FCFAF5] border-t border-[#E4DFD5]">
+            <div className="flex items-end gap-2 bg-[#F7F4EC] border border-[#E4DFD5] focus-within:border-[#244B3F] focus-within:ring-2 focus-within:ring-[#244B3F]/10 rounded-xl px-3 py-2 transition-all">
               <textarea
                 ref={textareaRef}
                 value={inputText}
@@ -692,20 +692,20 @@ export const BrandGuardAIAssistant: React.FC = () => {
                 }
                 rows={1}
                 disabled={isLoading}
-                className="flex-1 bg-transparent border-0 resize-none text-xs text-[#172033] placeholder:text-[#94A3B8] focus:outline-hidden max-h-24 leading-relaxed"
+                className="flex-1 bg-transparent border-0 resize-none text-xs text-[#242B27] placeholder:text-[#93988F] focus:outline-hidden max-h-24 leading-relaxed"
               />
               <button
                 disabled={!inputText.trim() || isLoading}
                 onClick={() => handleSendMessage()}
-                className="p-1.5 rounded-lg bg-[#0052FF] text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex-shrink-0 shadow-xs"
+                className="p-1.5 rounded-lg bg-[#244B3F] text-[#FCFAF5] hover:bg-[#1A362D] disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex-shrink-0 shadow-xs"
                 title="Send Message (Enter)"
               >
                 <Send className="w-3.5 h-3.5" />
               </button>
             </div>
-            <div className="flex items-center justify-between text-[10px] text-[#94A3B8] mt-1.5 px-1">
-              <span>Press <kbd className="bg-slate-100 border border-slate-300 rounded px-1 text-[9px] font-mono">Enter</kbd> to send</span>
-              <span className="flex items-center gap-1 font-mono">
+            <div className="flex items-center justify-between text-[10px] text-[#93988F] mt-1.5 px-1">
+              <span>Press <kbd className="bg-[#EFECE2] border border-[#E4DFD5] rounded px-1 text-[9px] font-mono">Enter</kbd> to send</span>
+              <span className="flex items-center gap-1 font-mono text-[#68736B]">
                 {mode === 'copilot' ? '🛡️ BrandGuard Grounded' : '⚡ Universal Creative AI'}
               </span>
             </div>

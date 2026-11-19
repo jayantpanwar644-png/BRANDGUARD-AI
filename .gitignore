@@ -52,7 +52,11 @@ yarn-error.log*
 
 # Exports & Zips
 BrandGuard-AI-Final/
+BrandGuard-Deploy-Backend/
+BrandGuard-Deploy-Frontend/
 *.zip
+dist/
+frontend/dist/
 
 # Environment & Secrets
 .env
@@ -68,17 +72,5 @@ BrandGuard-AI-Final/
 *.swo
 .DS_Store
 Thumbs.db
-# Vercel
-.vercel/
 
-# Build output
-dist/
-frontend/dist/
-
-# Python environment
-.python-version
-backend/inspect_*.py
-backend/trace_*.py
-backend/test_*.py
-backend/test_*.png
-frontend/package-lock.backup.json
+.vercel

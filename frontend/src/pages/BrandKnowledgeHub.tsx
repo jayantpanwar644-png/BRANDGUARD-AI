@@ -174,50 +174,51 @@ export const BrandKnowledgeHub: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12 select-none animate-in fade-in duration-200">
+    <div className="max-w-7xl mx-auto space-y-6 pb-12 select-none animate-fade-up font-sans">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="text-[12px] font-semibold uppercase tracking-wider text-[#315C76] font-sans mb-1.5">
-            Enterprise Ground Truth Repository
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#EBF0ED] border border-[#C8D7CF] text-[11.5px] font-semibold text-[#244B3F] mb-2 font-sans">
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Enterprise Ground Truth Repository</span>
           </div>
-          <h1 className="text-[28px] sm:text-[34px] font-bold font-heading text-[#172033] tracking-tight leading-tight">
+          <h1 className="text-[28px] sm:text-[34px] font-normal font-heading text-[#242B27] tracking-tight leading-tight">
             Brand Knowledge Hub
           </h1>
-          <p className="text-[14px] sm:text-[15px] text-[#64748B] mt-1.5 leading-relaxed">
+          <p className="text-[14px] sm:text-[15px] text-[#68736B] mt-1.5 leading-relaxed max-w-2xl">
             Central database for verified facts, approved marketing claims, visual rules, and communication policies.
           </p>
         </div>
       </div>
 
       {/* Brand Identity Baseline Banner */}
-      <Card className="p-5 sm:p-6 bg-[#FFFFFF] border-[#E2E8F0] space-y-4 shadow-xs">
-        <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9]">
+      <Card className="p-5 sm:p-6 bg-[#FCFAF5] border-[#E4DFD5] space-y-4 shadow-[0_2px_12px_rgba(36,43,39,0.04)]">
+        <div className="flex items-center justify-between pb-3 border-b border-[#EFEBE3]">
           <div className="flex items-center space-x-2.5">
-            <ShieldCheck className="w-5 h-5 text-[#315C76]" />
-            <h2 className="text-[16px] font-bold font-heading text-[#172033]">Verified Brand Profile Baseline</h2>
+            <ShieldCheck className="w-5 h-5 text-[#244B3F]" />
+            <h2 className="text-[17px] font-normal font-heading text-[#242B27]">Verified Brand Profile Baseline</h2>
           </div>
-          <span className="text-[11px] font-medium text-[#64748B] bg-[#F1F5F9] px-2.5 py-0.5 rounded-full">Configured in DB</span>
+          <span className="text-[11px] font-semibold text-[#244B3F] bg-[#EBF0ED] px-2.5 py-0.5 rounded-full border border-[#C8D7CF]">Configured in DB</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-          <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
-            <div className="text-[11.5px] text-[#64748B] uppercase mb-1.5 font-semibold font-sans">Colors (Primary / Secondary)</div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-sans">
+          <div className="p-4 bg-[#F7F4EC] rounded-xl border border-[#E4DFD5]">
+            <div className="text-[11.5px] text-[#68736B] uppercase mb-1.5 font-semibold font-sans">Colors (Primary / Secondary)</div>
             <div className="flex items-center space-x-2">
-              <span className="w-4 h-4 rounded-full border border-black/10 shadow-2xs" style={{ backgroundColor: brandProfile?.primary_color || '#315C76' }} />
-              <span className="font-mono text-[#172033] font-bold text-[13px]">{brandProfile?.primary_color || '#315C76'}</span>
-              <span className="w-4 h-4 rounded-full border border-black/10 shadow-2xs ml-2" style={{ backgroundColor: brandProfile?.secondary_color || '#183B59' }} />
-              <span className="font-mono text-[#172033] font-bold text-[13px]">{brandProfile?.secondary_color || '#183B59'}</span>
+              <span className="w-4 h-4 rounded-full border border-black/10 shadow-2xs" style={{ backgroundColor: brandProfile?.primary_color || '#244B3F' }} />
+              <span className="font-mono text-[#242B27] font-bold text-[13px]">{brandProfile?.primary_color || '#244B3F'}</span>
+              <span className="w-4 h-4 rounded-full border border-black/10 shadow-2xs ml-2" style={{ backgroundColor: brandProfile?.secondary_color || '#344D3D' }} />
+              <span className="font-mono text-[#242B27] font-bold text-[13px]">{brandProfile?.secondary_color || '#344D3D'}</span>
             </div>
           </div>
 
-          <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
-            <div className="text-[11.5px] text-[#64748B] uppercase mb-1.5 font-semibold font-sans">Typography &amp; Voice</div>
-            <div className="text-[#172033] font-semibold text-[13.5px] truncate">{brandProfile?.primary_font || 'Inter'} • {brandProfile?.tone_of_voice || 'Professional'}</div>
+          <div className="p-4 bg-[#F7F4EC] rounded-xl border border-[#E4DFD5]">
+            <div className="text-[11.5px] text-[#68736B] uppercase mb-1.5 font-semibold font-sans">Typography &amp; Voice</div>
+            <div className="text-[#242B27] font-semibold text-[13.5px] truncate">{brandProfile?.primary_font || 'Plus Jakarta Sans'} • {brandProfile?.tone_of_voice || 'Professional'}</div>
           </div>
 
-          <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
-            <div className="text-[11.5px] text-[#D85F67] uppercase mb-1.5 font-semibold font-sans">Restricted Vocabulary</div>
+          <div className="p-4 bg-[#F7F4EC] rounded-xl border border-[#E4DFD5]">
+            <div className="text-[11.5px] text-[#C77E63] uppercase mb-1.5 font-semibold font-sans">Restricted Vocabulary</div>
             <div className="text-[#64748B] truncate text-[12px] font-medium">{brandProfile?.restricted_words || 'None registered'}</div>
           </div>
         </div>

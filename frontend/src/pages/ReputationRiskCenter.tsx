@@ -101,17 +101,18 @@ export const ReputationRiskCenter: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-12 select-none animate-in fade-in duration-200">
+    <div className="max-w-7xl mx-auto space-y-8 pb-12 select-none animate-fade-up font-sans">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="text-[12px] font-semibold uppercase tracking-wider text-[#D85F67] font-sans mb-1.5">
-            Crisis &amp; Incident Governance
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#FAF0EC] border border-[#ECCBC0] text-[11.5px] font-semibold text-[#C77E63] font-sans mb-2">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span>Crisis &amp; Incident Governance</span>
           </div>
-          <h1 className="text-[28px] sm:text-[34px] font-bold font-heading text-[#172033] tracking-tight leading-tight">
+          <h1 className="text-[28px] sm:text-[34px] font-normal font-heading text-[#242B27] tracking-tight leading-tight">
             Reputation Risk Center
           </h1>
-          <p className="text-[14px] sm:text-[15px] text-[#64748B] mt-1.5 leading-relaxed">
+          <p className="text-[14px] sm:text-[15px] text-[#68736B] mt-1.5 leading-relaxed max-w-2xl">
             Automated reputation risk detection from verified audience feedback, incident management, and human-in-the-loop AI response drafting.
           </p>
         </div>
@@ -119,27 +120,27 @@ export const ReputationRiskCenter: React.FC = () => {
         <button
           onClick={handleEvaluate}
           disabled={evaluating}
-          className="flex items-center space-x-2 px-4.5 py-2.5 bg-[#FFFFFF] hover:bg-[#F8FAFC] text-[#172033] rounded-xl text-[13.5px] font-semibold border border-[#CBD5E1] transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+          className="flex items-center space-x-2 px-4.5 py-2.5 bg-[#244B3F] hover:bg-[#1A362D] text-[#FCFAF5] rounded-xl text-[13.5px] font-semibold shadow-[0_2px_8px_rgba(36,75,63,0.18)] transition-all cursor-pointer disabled:opacity-50 active:scale-[0.98]"
         >
-          <RefreshCw className={`w-3.5 h-3.5 text-[#315C76] ${evaluating ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 text-[#C6A66B] ${evaluating ? 'animate-spin' : ''}`} />
           <span>{evaluating ? 'Evaluating Feedback...' : 'Evaluate Current Risks'}</span>
         </button>
       </div>
 
       {/* Threshold Policies Reference Card */}
-      <div className="p-4 sm:p-5 rounded-xl bg-[#FFFFFF] border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row items-center justify-between text-xs gap-3">
+      <div className="p-4 sm:p-5 rounded-2xl bg-[#FCFAF5] border border-[#E4DFD5] shadow-[0_2px_12px_rgba(36,43,39,0.04)] flex flex-col sm:flex-row items-center justify-between text-xs gap-3">
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-lg bg-[#FDF0F1] text-[#D85F67] flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-[#FAF0EC] text-[#C77E63] flex items-center justify-center flex-shrink-0">
             <ShieldAlert className="w-5 h-5 stroke-[2]" />
           </div>
           <div>
-            <div className="font-semibold text-[13.5px] text-[#172033]">Documented Detection Thresholds</div>
-            <div className="text-[12px] text-[#64748B] leading-relaxed">
+            <div className="font-semibold text-[13.5px] text-[#242B27]">Documented Detection Thresholds</div>
+            <div className="text-[12px] text-[#68736B] leading-relaxed">
               Cluster trigger: ≥ 3 recurring complaints on same topic. Negative spike: &gt; 25% negative audience sentiment.
             </div>
           </div>
         </div>
-        <div className="flex items-center space-x-2 text-[12px] text-[#239B6B] bg-[#EAF7F1] px-3.5 py-1 rounded-full border border-[#BDE7D4] font-semibold">
+        <div className="flex items-center space-x-2 text-[12px] text-[#244B3F] bg-[#EBF0ED] px-3.5 py-1 rounded-full border border-[#C8D7CF] font-semibold">
           <span>Protection Policy: Active</span>
         </div>
       </div>
@@ -147,29 +148,29 @@ export const ReputationRiskCenter: React.FC = () => {
       {/* Active Incidents List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-[13px] font-bold font-heading text-[#172033] uppercase tracking-wider">
+          <h2 className="text-[13px] font-bold font-sans text-[#242B27] uppercase tracking-wider">
             Reputation Incidents Log ({incidents.length})
           </h2>
         </div>
 
         {incidents.length === 0 ? (
-          <Card className="p-10 text-center bg-[#FFFFFF] border-[#E2E8F0] space-y-3 shadow-xs">
-            <div className="w-12 h-12 rounded-2xl bg-[#EAF7F1] text-[#239B6B] flex items-center justify-center mx-auto border border-[#BDE7D4]">
+          <Card className="p-10 text-center bg-[#FCFAF5] border-[#E4DFD5] space-y-3 shadow-[0_2px_12px_rgba(36,43,39,0.04)]">
+            <div className="w-12 h-12 rounded-2xl bg-[#EBF0ED] text-[#244B3F] flex items-center justify-center mx-auto border border-[#C8D7CF]">
               <CheckCircle2 className="w-6 h-6 stroke-[2]" />
             </div>
-            <h3 className="text-[16px] font-bold text-[#172033] font-heading">No Reputation Risks Detected</h3>
-            <p className="text-[13px] text-[#64748B] max-w-md mx-auto leading-relaxed">
+            <h3 className="text-[16px] font-normal text-[#242B27] font-heading">No Reputation Risks Detected</h3>
+            <p className="text-[13px] text-[#68736B] max-w-md mx-auto leading-relaxed">
               Audience feedback analysis indicates stable sentiment within safety tolerances. No recurring complaint clusters or spikes found.
             </p>
           </Card>
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {incidents.map((inc) => (
-              <Card key={inc.id} className="p-5 sm:p-6 bg-[#FFFFFF] border-[#E2E8F0] space-y-3 shadow-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-[#F1F5F9]">
+              <Card key={inc.id} className="p-5 sm:p-6 bg-[#FCFAF5] border-[#E4DFD5] space-y-3 shadow-[0_2px_12px_rgba(36,43,39,0.04)]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-[#EFEBE3]">
                   <div className="flex items-center space-x-3">
                     <Badge status={inc.severity} size="sm" />
-                    <h3 className="text-[15px] sm:text-[16px] font-bold text-[#172033] font-heading">{inc.title}</h3>
+                    <h3 className="text-[15px] sm:text-[16px] font-semibold text-[#242B27] font-sans">{inc.title}</h3>
                   </div>
                   <div className="flex items-center space-x-3">
                     <Badge status={inc.status} size="sm" />

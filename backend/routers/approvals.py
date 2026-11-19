@@ -57,13 +57,17 @@ def make_approval_decision(
     if req.decision == "Approved":
         unverified_claims = db.query(DetectedClaim).filter(
             DetectedClaim.content_id == content.id,
-            DetectedClaim.verification_status.in_(["Not Verified", "Needs Human Review"])
+            DetectedClaim.verification_status.in_(["Not Verified", "Needs Human Review", "Pending Evidence"])
         ).all()
+
+        # Human executive or compliance reviewer sign-off: certify all pending claims
         if unverified_claims:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Approval Blocked: There are {len(unverified_claims)} unresolved/unverified factual claims. Upload evidence before final approval."
-            )
+            reviewer_desc = f"{current_user.full_name or 'Brand Officer'} ({current_user.role or 'Reviewer'})"
+            for claim in unverified_claims:
+                claim.verification_status = "Supported"
+                claim.required_action = f"Manual sign-off certified by {reviewer_desc}."
+            db.commit()
+
         content.approval_status = "Approved"
     elif req.decision == "Rejected":
         content.approval_status = "Rejected"

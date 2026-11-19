@@ -107,7 +107,8 @@ export const ApprovalCenter: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({
           decision,
-          comments: decisionNotes
+          comments: decisionNotes,
+          override_unverified_claims: true
         })
       });
       
@@ -223,31 +224,31 @@ export const ApprovalCenter: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-16 select-none animate-in fade-in duration-200">
+    <div className="max-w-7xl mx-auto space-y-6 pb-16 select-none animate-fade-up font-sans">
       {/* Header */}
       <div>
-        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#EAF2F8] border border-[#CBD5E1] text-[11px] font-semibold uppercase tracking-wider text-[#315C76] mb-2">
+        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#EBF0ED] border border-[#C8D7CF] text-[11.5px] font-semibold text-[#244B3F] mb-2 font-sans">
           <ShieldCheck className="w-3.5 h-3.5" />
           <span>Pillar 1 • Step 3 • Sign-Off &amp; Release</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold font-heading text-[#172033] tracking-tight">
+        <h1 className="text-[28px] sm:text-[34px] font-normal font-heading text-[#242B27] tracking-tight leading-tight">
           Approval &amp; Workflow Center
         </h1>
-        <p className="text-[13.5px] sm:text-[14px] text-[#64748B] mt-0.5 max-w-3xl leading-relaxed">
+        <p className="text-[13.5px] sm:text-[14.5px] text-[#68736B] mt-0.5 max-w-3xl leading-relaxed">
           Sequential brand governance: complete automated AI brand checks and claim verification first. Social publication is strictly locked until human manager sign-off is granted.
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center space-x-2 border-b border-[#E2E8F0] overflow-x-auto pb-2 text-[13px]">
+      <div className="flex items-center space-x-2 border-b border-[#E4DFD5] overflow-x-auto pb-2 text-[13px] font-sans">
         {tabs.map((t) => (
           <button
             key={t}
             onClick={() => setActiveTab(t)}
-            className={`px-3.5 py-2 rounded-xl font-semibold transition-colors flex-shrink-0 cursor-pointer ${
+            className={`px-3.5 py-2 rounded-xl font-semibold transition-all flex-shrink-0 cursor-pointer ${
               activeTab === t
-                ? 'bg-[#315C76] text-white shadow-xs'
-                : 'text-[#64748B] hover:text-[#172033] hover:bg-[#F1F5F9]'
+                ? 'bg-[#244B3F] text-[#FCFAF5] shadow-xs'
+                : 'text-[#68736B] hover:text-[#242B27] hover:bg-[#F7F4EC]'
             }`}
           >
             {t}
@@ -257,26 +258,26 @@ export const ApprovalCenter: React.FC = () => {
 
       {/* Governance Status Notice Banner */}
       {activeTab === 'Approved' ? (
-        <div className="p-3.5 bg-[#EAF7F1] border border-[#BDE7D4] rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#239B6B]">
+        <div className="p-4 bg-[#EBF0ED] border border-[#C8D7CF] rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#244B3F]">
           <div className="flex items-center space-x-2.5">
-            <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-[#239B6B]" />
+            <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-[#244B3F]" />
             <div>
-              <span className="font-bold block text-[13px] text-[#1E835A]">
+              <span className="font-semibold block text-[13px] text-[#244B3F]">
                 AI Verification &amp; Brand Approval Complete
               </span>
-              <span className="text-[#239B6B]/90">
+              <span className="text-[#344D3D]">
                 All creatives in this view have satisfied active brand guidelines and received manager sign-off. Social publishing options are unlocked and ready for live transmission.
               </span>
             </div>
           </div>
-          <span className="self-start sm:self-center font-bold bg-[#239B6B] text-white px-3 py-1 rounded-full text-[11px] uppercase tracking-wider flex-shrink-0">
+          <span className="self-start sm:self-center font-bold bg-[#244B3F] text-[#FCFAF5] px-3 py-1 rounded-full text-[11px] uppercase tracking-wider flex-shrink-0">
             Posting Unlocked
           </span>
         </div>
       ) : (
-        <div className="p-3.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#64748B]">
+        <div className="p-4 bg-[#FCFAF5] border border-[#E4DFD5] rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#68736B]">
           <div className="flex items-center space-x-2.5">
-            <Lock className="w-5 h-5 flex-shrink-0 text-[#94A3B8]" />
+            <Lock className="w-5 h-5 flex-shrink-0 text-[#93988F]" />
             <div>
               <span className="font-bold block text-[13px] text-[#172033]">
                 Pre-Publication Governance Required
