@@ -366,6 +366,7 @@ export const CompanyGuidelines: React.FC = () => {
     try {
       await apiRequest(`/brand/guidelines/${id}/toggle-active`, { method: 'PATCH' });
       setGuidelines(prev => prev.map(g => g.id === id ? { ...g, is_active: !g.is_active } : g));
+      await refreshProfile();
     } catch (err: any) {
       alert(err.message || 'Could not toggle document status.');
     }

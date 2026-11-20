@@ -241,11 +241,12 @@ export interface ResponseSuggestion {
 
 export interface BrandGuideline {
   id: number;
+  organisation_id?: number;
   document_name: string;
   file_path: string;
   file_size: number;
   file_type: string;
-  processing_status: 'Uploaded' | 'Processing' | 'Processed' | 'Verified';
+  processing_status: 'Uploaded' | 'Processing' | 'Processed' | 'Verified' | 'Draft' | string;
   version: string;
   document_category?: string;
   is_active?: boolean;

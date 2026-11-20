@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   X, UploadCloud, Image as ImageIcon, Sparkles, CheckCircle2,
@@ -10,6 +10,7 @@ import {
   FileCheck, Loader2, Maximize2, Upload, Briefcase, ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
 import { apiRequest } from '../../api/client';
+import { useAuth } from '../../context/AuthContext';
 import { 
   BrandProfile, BrandRule, BrandGuideline, 
   AuditReport, AuditFinding, DetectedClaim, UploadedContent, ContentVersion 
@@ -33,6 +34,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
   initialError = null
 }) => {
   const navigate = useNavigate();
+  const { organisation, refreshProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -78,6 +80,37 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
   const [newRuleCategory, setNewRuleCategory] = useState('Visual');
   const [newRuleSeverity, setNewRuleSeverity] = useState<'High' | 'Medium' | 'Low'>('Medium');
   const [newRuleDesc, setNewRuleDesc] = useState('');
+
+  // Strict database-backed validation: verify that at least one valid, active, non-draft guideline
+  // persisted in the database belongs to the current authenticated company.
+  const hasValidSavedGuidelines = useMemo(() => {
+    const currentOrgId = Number(organisation?.id || brandProfile?.organisation_id);
+    if (!currentOrgId || !Array.isArray(guidelines) || guidelines.length === 0) {
+      return false;
+    }
+    return guidelines.some(
+      (g) =>
+        g &&
+        Number(g.organisation_id || currentOrgId) === currentOrgId &&
+        Boolean(g.is_active !== false) &&
+        g.processing_status !== 'Draft' &&
+        g.processing_status !== 'Failed' &&
+        Boolean(g.document_name && g.document_name.trim().length > 0)
+    );
+  }, [guidelines, organisation?.id, brandProfile?.organisation_id]);
+
+  const handleStepClick = (targetStep: StepNumber) => {
+    if (targetStep >= 4 && !hasValidSavedGuidelines) {
+      setErrorMessage('Brand guidelines must be configured and saved in the database before proceeding to AI Audit.');
+      if (!createdContent) {
+        setCurrentStep(1);
+      } else {
+        setCurrentStep(3);
+      }
+      return;
+    }
+    setCurrentStep(targetStep);
+  };
 
   // STEP 4: Live AI Post Analysis State
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -162,7 +195,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
   const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
   const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
 
-  // Initialize and load brand profile on open
+  // Initialize and load brand profile on open or when active organisation changes
   useEffect(() => {
     if (isOpen) {
       setErrorMessage(initialError || null);
@@ -174,7 +207,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
         setCurrentStep(1);
       }
     }
-  }, [isOpen, initialError, initialFile]);
+  }, [isOpen, initialError, initialFile, organisation?.id]);
 
   // Clean up object URLs
   useEffect(() => {
@@ -217,15 +250,17 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
         if (profileRes.logo_path) setLogoPreview(formatAssetUrl(profileRes.logo_path));
       }
 
-      const primaryLogo = assetsRes.find((a: any) => a.is_primary || a.asset_type === 'Primary Logo');
+      const primaryLogo = assetsRes?.find?.((a: any) => a.is_primary || a.asset_type === 'Primary Logo');
       if (primaryLogo && primaryLogo.file_path) {
         setLogoPreview(formatAssetUrl(primaryLogo.file_path));
       }
 
-      setGuidelines(guidelinesRes || []);
-      setRules(rulesRes || []);
+      setGuidelines(Array.isArray(guidelinesRes) ? guidelinesRes : []);
+      setRules(Array.isArray(rulesRes) ? rulesRes : []);
     } catch (e) {
       console.error('Failed to load initial brand data in modal', e);
+      setGuidelines([]);
+      setRules([]);
     }
   };
 
@@ -287,7 +322,10 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
       const content = res.content || res;
       setCreatedContent(content);
 
-      if (runDirectAudit) {
+      // Workflow Logic:
+      // IF valid saved guidelines exist -> allow direct AI Audit if requested
+      // IF valid saved guidelines do NOT exist -> force completion of Step 2 (Brand Info) & Step 3 (Guidelines)
+      if (runDirectAudit && hasValidSavedGuidelines) {
         setCurrentStep(4);
         handleStartAnalysisStep4(content);
       } else {
@@ -382,6 +420,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
       });
 
       await loadBrandData();
+      await refreshProfile();
     } catch (err: any) {
       setDocUploadError(err.message || 'Guideline document processing failed.');
     } finally {
@@ -430,6 +469,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
       setNewRuleDesc('');
       setNewRuleModalOpen(false);
       await loadBrandData();
+      await refreshProfile();
     } catch (err: any) {
       alert(err.message || 'Failed to add rule.');
     }
@@ -986,19 +1026,23 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
             {stepsList.map((s) => {
               const isPassed = s.num < currentStep;
               const isCurrent = s.num === currentStep;
+              const isLocked = s.num >= 4 && !hasValidSavedGuidelines;
               return (
                 <button
                   key={s.num}
                   type="button"
-                  onClick={() => setCurrentStep(s.num as StepNumber)}
+                  onClick={() => handleStepClick(s.num as StepNumber)}
+                  disabled={isLocked}
                   className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full whitespace-nowrap transition-all cursor-pointer hover:scale-102 active:scale-98 ${
                     isCurrent
                       ? 'bg-[#244B3F] text-[#FCFAF5] shadow-2xs font-bold'
+                      : isLocked
+                      ? 'bg-[#F7F4EC] text-[#9CA3AF] border border-[#E4DFD5] opacity-50 cursor-not-allowed'
                       : isPassed
                       ? 'bg-[#EBF0ED] text-[#244B3F] border border-[#C8D7CF] hover:bg-[#DCE7E1]'
                       : 'bg-[#F7F4EC] text-[#68736B] border border-[#E4DFD5] hover:bg-[#EFECE2] hover:text-[#242B27]'
                   }`}
-                  title={`Jump to Step ${s.num}: ${s.label}`}
+                  title={isLocked ? `Step ${s.num} locked: Brand guidelines required in database` : `Jump to Step ${s.num}: ${s.label}`}
                 >
                   <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
                     isCurrent ? 'bg-white/20 text-[#FCFAF5]' : isPassed ? 'bg-[#C8D7CF] text-[#244B3F]' : 'bg-[#E4DFD5] text-[#68736B]'
@@ -1165,7 +1209,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
 
                   <div className="pt-3 border-t border-[#F1F5F9] flex flex-col sm:flex-row items-center justify-between gap-3">
                     <span className="text-[11.5px] text-[#64748B]">
-                      {brandProfile?.is_configured ? '✓ Brand guidelines active' : '• Brand info reviewed in Step 2'}
+                      {hasValidSavedGuidelines ? '✓ Brand guidelines active' : '• Brand guidelines required before audit'}
                     </span>
                     <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
                       <button
@@ -1174,18 +1218,20 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
                         disabled={isSavingPost || !selectedFile}
                         className="px-4 py-2 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#172033] rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50"
                       >
-                        <span>Review Brand Info</span>
+                        <span>{hasValidSavedGuidelines ? 'Review Brand Info' : 'Continue to Brand Info'}</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={(e) => handleSavePostStep1(e, true)}
-                        disabled={isSavingPost || !selectedFile}
-                        className="px-5 py-2 bg-[#315C76] hover:bg-[#183B59] text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>{isSavingPost ? 'Saving Post...' : 'Save & Run AI Audit'}</span>
-                      </button>
+                      {hasValidSavedGuidelines && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleSavePostStep1(e, true)}
+                          disabled={isSavingPost || !selectedFile}
+                          className="px-5 py-2 bg-[#315C76] hover:bg-[#183B59] text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>{isSavingPost ? 'Saving Post...' : 'Save & Run AI Audit'}</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1562,7 +1608,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-2">
+              <div className="flex flex-col sm:flex-row items-center justify-between pt-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setCurrentStep(2)}
@@ -1572,11 +1618,17 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
                   <span>Back to Brand Info</span>
                 </button>
 
+                {!hasValidSavedGuidelines && (
+                  <span className="text-[11.5px] text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-lg">
+                    Upload or save company brand guidelines in database to enable AI Audit
+                  </span>
+                )}
+
                 <button
                   type="button"
                   onClick={handleStartAnalysisStep4}
-                  disabled={rules.length === 0}
-                  className="px-5 py-2.5 bg-[#315C76] hover:bg-[#183B59] text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                  disabled={!hasValidSavedGuidelines || isUploadingDoc}
+                  className="px-5 py-2.5 bg-[#315C76] hover:bg-[#183B59] text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Sparkles className="w-4 h-4" />
                   <span>Start Actual AI Post Analysis</span>

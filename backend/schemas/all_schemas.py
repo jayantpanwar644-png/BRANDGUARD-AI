@@ -146,6 +146,7 @@ class BrandSetupStatusResponse(BaseModel):
 # Guideline & Rules Schemas
 class BrandGuidelineResponse(BaseModel):
     id: int
+    organisation_id: Optional[int] = None
     document_name: str
     file_path: str
     file_size: int

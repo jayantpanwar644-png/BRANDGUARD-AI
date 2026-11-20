@@ -116,29 +116,27 @@ def get_brand_setup_status(org: Organisation, db: Session) -> Dict[str, Any]:
     if not has_voice:
         missing.append("Configure your Brand Voice & Tone of voice.")
 
-    # Step 4: Company Guidelines & Confirmed Rules
+    # Step 4: Company Guidelines
     guideline_count = db.query(func.count(BrandGuideline.id)).filter(
         BrandGuideline.organisation_id == org.id,
-        BrandGuideline.is_active == True
+        BrandGuideline.is_active == True,
+        BrandGuideline.processing_status.notin_(["Draft", "Failed"]),
+        BrandGuideline.document_name.isnot(None),
+        BrandGuideline.document_name != ""
     ).scalar() or 0
-    confirmed_rules_count = db.query(func.count(BrandRule.id)).filter(
-        BrandRule.organisation_id == org.id,
-        BrandRule.is_active == True,
-        BrandRule.review_status == "Confirmed"
-    ).scalar() or 0
-    has_guidelines = (guideline_count > 0 or confirmed_rules_count > 0)
+    has_guidelines = guideline_count > 0
     steps.append({
         "step_id": "guidelines",
         "step_number": 4,
-        "title": "Brand Guidelines & Confirmed Rules",
+        "title": "Brand Guidelines",
         "description": "Upload brand guidelines (PDF, DOCX, TXT) and confirm extracted governance rules.",
         "status": "completed" if has_guidelines else "missing",
         "is_completed": has_guidelines,
-        "details": f"{guideline_count} document(s), {confirmed_rules_count} confirmed rule(s)" if has_guidelines else None,
-        "missing_items": [] if has_guidelines else ["Upload guideline document and confirm brand rules"]
+        "details": f"{guideline_count} document(s)" if has_guidelines else None,
+        "missing_items": [] if has_guidelines else ["Upload brand guideline document"]
     })
     if not has_guidelines:
-        missing.append("Upload brand guideline document and confirm extracted brand rules.")
+        missing.append("Upload brand guideline document and save brand guidelines.")
 
     # Step 5: Approved Claims & Verified Facts
     claim_count = db.query(func.count(ApprovedClaim.id)).filter(
@@ -290,31 +288,23 @@ def ensure_baseline_governance_rules(org: Organisation, profile: Optional[BrandP
 
 
 def check_brand_setup_complete(org: Organisation, db: Session):
-    """Raise HTTP 403 if brand setup is not complete. Used as a guard on analyse."""
-    profile = db.query(BrandProfile).filter(BrandProfile.organisation_id == org.id).first()
+    """Raise HTTP 403 if valid brand guidelines are not saved in the database. Used as a guard on analyse."""
+    # Check actual persisted database records for valid brand guidelines belonging to this company
+    valid_guideline = db.query(BrandGuideline).filter(
+        BrandGuideline.organisation_id == org.id,
+        BrandGuideline.is_active == True,
+        BrandGuideline.processing_status.notin_(["Draft", "Failed"]),
+        BrandGuideline.document_name.isnot(None),
+        BrandGuideline.document_name != ""
+    ).first()
 
-    # Check for logo presence
-    has_logo = False
-    if profile and profile.logo_path:
-        has_logo = check_logo_file_exists(profile.logo_path)
-    if not has_logo:
-        has_logo = bool(db.query(BrandAsset).filter(
-            BrandAsset.organisation_id == org.id
-        ).first())
-
-    # If organisation has name, industry, and logo, ensure baseline rules are active and permit audit
-    if org.name and org.industry and has_logo:
-        ensure_baseline_governance_rules(org, profile, db)
-        return
-
-    status_data = get_brand_setup_status(org, db)
-    if not status_data["is_complete"]:
+    if not valid_guideline:
         raise HTTPException(
             status_code=403,
             detail={
-                "message": "Complete your Brand Setup before uploading or auditing content.",
-                "missing": status_data["missing_requirements"],
-                "setup_status": status_data
+                "message": "Valid brand guidelines must be saved in the database before auditing content.",
+                "missing": ["Brand Guidelines document"],
+                "organisation_id": org.id
             }
         )
 
@@ -488,20 +478,38 @@ async def upload_guideline_document(
 
     file_size = file_dest.stat().st_size
 
-    # Create Guideline record
-    guideline = BrandGuideline(
-        organisation_id=org.id,
-        document_name=file.filename,
-        file_path=str(file_dest),
-        file_size=file_size,
-        file_type=ext,
-        processing_status="Processing",
-        version=version,
-        document_category=category,
-        is_active=True
-    )
-    db.add(guideline)
-    db.flush()
+    # Check for existing guideline for this organisation to prevent duplicates
+    existing_guideline = db.query(BrandGuideline).filter(
+        BrandGuideline.organisation_id == org.id,
+        BrandGuideline.document_name == file.filename
+    ).first()
+
+    if existing_guideline:
+        guideline = existing_guideline
+        guideline.file_path = str(file_dest)
+        guideline.file_size = file_size
+        guideline.file_type = ext
+        guideline.processing_status = "Processing"
+        guideline.version = version
+        guideline.document_category = category
+        guideline.is_active = True
+        guideline.updated_at = datetime.now(timezone.utc)
+        # Clear existing sections to avoid duplicate chunking
+        db.query(DocumentSection).filter(DocumentSection.guideline_id == guideline.id).delete()
+    else:
+        guideline = BrandGuideline(
+            organisation_id=org.id,
+            document_name=file.filename,
+            file_path=str(file_dest),
+            file_size=file_size,
+            file_type=ext,
+            processing_status="Processing",
+            version=version,
+            document_category=category,
+            is_active=True
+        )
+        db.add(guideline)
+        db.flush()
 
     # RAG Extraction & Chunking
     extracted_text = extract_text_from_file(str(file_dest), ext)
@@ -559,12 +567,48 @@ async def upload_guideline_document(
         "guideline": guideline
     }
 
+@router.get("/guidelines/validate")
+def validate_guidelines_status(
+    org: Organisation = Depends(get_current_organisation),
+    db: Session = Depends(get_db)
+):
+    """Check actual persisted database records to verify whether valid brand guidelines exist for the current company."""
+    guidelines = db.query(BrandGuideline).filter(
+        BrandGuideline.organisation_id == org.id,
+        BrandGuideline.is_active == True,
+        BrandGuideline.processing_status.notin_(["Draft", "Failed"]),
+        BrandGuideline.document_name.isnot(None),
+        BrandGuideline.document_name != ""
+    ).all()
+
+    return {
+        "organisation_id": org.id,
+        "organisation_name": org.name,
+        "has_valid_guidelines": len(guidelines) > 0,
+        "count": len(guidelines),
+        "guidelines": [
+            {
+                "id": g.id,
+                "document_name": g.document_name,
+                "version": g.version,
+                "processing_status": g.processing_status,
+                "is_active": g.is_active,
+                "created_at": g.created_at.isoformat() if g.created_at else None
+            }
+            for g in guidelines
+        ]
+    }
+
 @router.get("/guidelines", response_model=List[BrandGuidelineResponse])
 def list_guidelines(
     org: Organisation = Depends(get_current_organisation),
     db: Session = Depends(get_db)
 ):
-    return db.query(BrandGuideline).filter(BrandGuideline.organisation_id == org.id).order_by(BrandGuideline.created_at.desc()).all()
+    return db.query(BrandGuideline).filter(
+        BrandGuideline.organisation_id == org.id,
+        BrandGuideline.is_active == True,
+        BrandGuideline.processing_status.notin_(["Draft", "Failed"])
+    ).order_by(BrandGuideline.created_at.desc()).all()
 
 @router.delete("/guidelines/{id}")
 def delete_guideline(
@@ -585,8 +629,24 @@ def delete_guideline(
     except Exception:
         pass
 
+    # Clean up associated sections and rules
+    db.query(DocumentSection).filter(DocumentSection.guideline_id == guideline.id).delete()
+    db.query(BrandRule).filter(BrandRule.guideline_id == guideline.id).delete()
     db.delete(guideline)
     db.commit()
+
+    # Re-evaluate remaining guidelines for this organisation
+    remaining = db.query(BrandGuideline).filter(
+        BrandGuideline.organisation_id == org.id,
+        BrandGuideline.is_active == True,
+        BrandGuideline.processing_status.notin_(["Draft", "Failed"])
+    ).count()
+    if remaining == 0:
+        brand = db.query(BrandProfile).filter(BrandProfile.organisation_id == org.id).first()
+        if brand:
+            brand.guidelines_confirmed = False
+            db.commit()
+
     return {"message": "Brand guideline deleted successfully."}
 
 @router.patch("/guidelines/{id}/toggle-active")
@@ -609,13 +669,7 @@ def get_brand_rules(
     org: Organisation = Depends(get_current_organisation),
     db: Session = Depends(get_db)
 ):
-    rules = db.query(BrandRule).filter(BrandRule.organisation_id == org.id).all()
-    if not rules:
-        profile = db.query(BrandProfile).filter(BrandProfile.organisation_id == org.id).first()
-        if profile and (profile.is_configured or profile.is_setup_complete):
-            ensure_baseline_governance_rules(org, profile, db)
-            rules = db.query(BrandRule).filter(BrandRule.organisation_id == org.id).all()
-    return rules
+    return db.query(BrandRule).filter(BrandRule.organisation_id == org.id).all()
 
 @router.post("/rules/seed-defaults")
 def seed_default_rules(

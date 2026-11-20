@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 export const Header: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, organisation, brandProfile, logout } = useAuth();
+  const { user, organisation, brandProfile, hasValidGuidelines, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [hasUnread, setHasUnread] = useState(true);
@@ -67,13 +67,13 @@ export const Header: React.FC = () => {
           {/* Real Brand configuration status pill */}
           <span
             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-semibold border ${
-              brandProfile?.is_configured
+              hasValidGuidelines
                 ? 'bg-[#EBF0ED] text-[#244B3F] border-[#C8D7CF]'
                 : 'bg-[#F9F5EC] text-[#9E7A3E] border-[#E7DBC5]'
             }`}
           >
             <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-current opacity-90" />
-            {brandProfile?.is_configured ? 'Brand Rules Active' : 'Setup Incomplete'}
+            {hasValidGuidelines ? 'Brand Rules Active' : 'Setup Incomplete'}
           </span>
         </div>
       </div>

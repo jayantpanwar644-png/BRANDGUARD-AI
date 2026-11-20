@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from backend.core.database import get_db
 from backend.core.security import hash_password, verify_password, create_access_token
 from backend.core.deps import get_current_user
-from backend.models.all_models import User, Organisation, BrandProfile, ActivityLog
+from backend.models.all_models import User, Organisation, BrandProfile, BrandGuideline, ActivityLog
 from backend.schemas.all_schemas import UserLogin, UserRegister, TokenResponse, UserResponse
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -158,10 +158,24 @@ def get_current_user_profile(
 ):
     org = db.query(Organisation).filter(Organisation.id == current_user.organisation_id).first()
     brand = db.query(BrandProfile).filter(BrandProfile.organisation_id == current_user.organisation_id).first()
+    
+    # Real database-backed brand guidelines verification
+    valid_guidelines = db.query(BrandGuideline).filter(
+        BrandGuideline.organisation_id == current_user.organisation_id,
+        BrandGuideline.is_active == True,
+        BrandGuideline.processing_status.notin_(["Draft", "Failed"]),
+        BrandGuideline.document_name.isnot(None),
+        BrandGuideline.document_name != ""
+    ).all()
+    guidelines_count = len(valid_guidelines)
+    has_valid_guidelines = guidelines_count > 0
+
     return {
         "user": current_user,
         "organisation": org,
-        "brand_profile": brand
+        "brand_profile": brand,
+        "has_valid_guidelines": has_valid_guidelines,
+        "guidelines_count": guidelines_count
     }
 
 @router.post("/logout")
