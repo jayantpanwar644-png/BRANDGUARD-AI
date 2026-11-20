@@ -9,12 +9,15 @@ from backend.services.social_providers.instagram import InstagramProvider
 from backend.services.social_providers.facebook import FacebookProvider
 from backend.services.social_providers.linkedin import LinkedInProvider
 from backend.services.social_providers.youtube import YouTubeProvider
+from backend.services.social_providers.twitter import TwitterProvider
 
 PROVIDERS: Dict[str, Type[BaseSocialProvider]] = {
     "instagram": InstagramProvider,
     "facebook": FacebookProvider,
     "linkedin": LinkedInProvider,
     "youtube": YouTubeProvider,
+    "twitter": TwitterProvider,
+    "x": TwitterProvider,
 }
 
 
@@ -38,5 +41,6 @@ __all__ = [
     "FacebookProvider",
     "LinkedInProvider",
     "YouTubeProvider",
+    "TwitterProvider",
     "get_social_provider",
 ]

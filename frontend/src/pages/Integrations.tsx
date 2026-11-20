@@ -4,7 +4,7 @@ import {
   ShieldCheck, Loader2, X, RotateCw, ChevronRight, Layers
 } from 'lucide-react';
 import {
-  InstagramIcon, FacebookIcon, LinkedinIcon, YouTubeIcon
+  InstagramIcon, FacebookIcon, LinkedinIcon, YouTubeIcon, TwitterIcon
 } from '../components/common/SocialIcons';
 import { apiRequest } from '../api/client';
 import { Card } from '../components/common/Card';
@@ -59,6 +59,18 @@ const PLATFORMS = [
     color: '#FF0000',
     bgColor: 'rgba(255,0,0,0.10)',
     accountType: 'YouTube Data API v3 (Channel Sync)',
+  },
+  {
+    id: 'twitter',
+    name: 'X (Twitter)',
+    heading: 'Connect your X (Twitter) account',
+    description: 'Connect your official X account to monitor post replies, brand mentions and understand audience sentiment.',
+    cta: 'Continue with X',
+    note: 'You will securely sign in on X (Twitter) and approve the permissions requested by BrandGuard AI.',
+    Icon: TwitterIcon,
+    color: '#1D9BF0',
+    bgColor: 'rgba(29,155,240,0.10)',
+    accountType: 'X (Twitter) Developer API v2',
   },
 ] as const;
 

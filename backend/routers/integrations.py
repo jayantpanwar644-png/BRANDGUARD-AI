@@ -111,6 +111,20 @@ PROVIDER_META = {
             "5. Copy Client ID (GOOGLE_CLIENT_ID) and Client Secret (GOOGLE_CLIENT_SECRET)."
         ),
         "official_permissions": "https://www.googleapis.com/auth/youtube.readonly, https://www.googleapis.com/auth/youtube.force-ssl"
+    },
+    "twitter": {
+        "name": "X (Twitter)",
+        "account_type": "X (Twitter) Developer API v2",
+        "dev_portal_url": "https://developer.twitter.com/en/portal/dashboard",
+        "required_keys": ["TWITTER_API_KEY", "TWITTER_API_SECRET"],
+        "setup_guide": (
+            "1. Go to X Developer Portal (developer.twitter.com/en/portal/dashboard).\n"
+            "2. Under Projects & Apps, create or select your App.\n"
+            "3. Set User authentication settings: OAuth 2.0, Web App.\n"
+            "4. Add the exact Redirect URI below into 'Callback URI / Redirect URL'.\n"
+            "5. Copy Client ID (TWITTER_API_KEY) and Client Secret (TWITTER_API_SECRET)."
+        ),
+        "official_permissions": "tweet.read, tweet.write, users.read, offline.access"
     }
 }
 
@@ -130,7 +144,13 @@ def get_integrations_status(
     accounts = db.query(ConnectedSocialAccount).filter(
         ConnectedSocialAccount.organisation_id == org.id
     ).all()
-    account_map = {acc.platform.lower(): acc for acc in accounts}
+    account_map: Dict[str, ConnectedSocialAccount] = {}
+    for a in accounts:
+        k = a.platform.lower()
+        account_map[k] = a
+        if "twitter" in k or k == "x":
+            account_map["twitter"] = a
+            account_map["x"] = a
 
     status_report: Dict[str, Any] = {}
 
@@ -154,8 +174,15 @@ def get_integrations_status(
                 missing_keys.append("GOOGLE_CLIENT_ID")
             if not settings.GOOGLE_CLIENT_SECRET.strip():
                 missing_keys.append("GOOGLE_CLIENT_SECRET")
+        elif p_id in ("twitter", "x"):
+            if not settings.TWITTER_API_KEY.strip():
+                missing_keys.append("TWITTER_API_KEY")
+            if not settings.TWITTER_API_SECRET.strip():
+                missing_keys.append("TWITTER_API_SECRET")
 
         acc = account_map.get(p_id)
+        if not acc and p_id in ("twitter", "x"):
+            acc = account_map.get("twitter") or account_map.get("x")
         is_connected = bool(acc and acc.status == "Connected")
 
         # Determine granular status string
@@ -693,7 +720,11 @@ def oauth_disconnect(
 
     account = db.query(ConnectedSocialAccount).filter(
         ConnectedSocialAccount.organisation_id == org.id,
-        ConnectedSocialAccount.platform == platform_display
+        (
+            (ConnectedSocialAccount.platform == platform_display) |
+            (ConnectedSocialAccount.platform == "Twitter" if p_id in ("twitter", "x") else False) |
+            (ConnectedSocialAccount.platform == "X (Twitter)" if p_id in ("twitter", "x") else False)
+        )
     ).first()
 
     if not account:
@@ -735,7 +766,11 @@ def oauth_sync(
 
     account = db.query(ConnectedSocialAccount).filter(
         ConnectedSocialAccount.organisation_id == org.id,
-        ConnectedSocialAccount.platform == platform_display
+        (
+            (ConnectedSocialAccount.platform == platform_display) |
+            (ConnectedSocialAccount.platform == "Twitter" if p_id in ("twitter", "x") else False) |
+            (ConnectedSocialAccount.platform == "X (Twitter)" if p_id in ("twitter", "x") else False)
+        )
     ).first()
 
     if not account:
@@ -860,12 +895,15 @@ def publish_content(
             detail=f"Publication Blocked: Content status is '{content.approval_status}'. Content must have human 'Approved' status before publication."
         )
 
-    p_matched = next((p for p in ["Instagram", "Facebook", "LinkedIn", "YouTube"] if p.lower() == platform.lower()), platform)
+    p_matched = next((p for p in ["Instagram", "Facebook", "LinkedIn", "YouTube", "X (Twitter)"] if p.lower() in platform.lower() or platform.lower() in p.lower()), platform)
 
     account = db.query(ConnectedSocialAccount).filter(
         ConnectedSocialAccount.organisation_id == org.id,
-        ConnectedSocialAccount.platform == p_matched,
-        ConnectedSocialAccount.status == "Connected"
+        ConnectedSocialAccount.status == "Connected",
+        (
+            (ConnectedSocialAccount.platform == p_matched) |
+            (ConnectedSocialAccount.platform == "Twitter" if "twit" in platform.lower() or platform.lower() == "x" else False)
+        )
     ).first()
 
     if not account:
@@ -915,11 +953,325 @@ def publish_content(
     db.commit()
     db.refresh(pub_post)
 
+    try:
+        dispatch_platform_sync(account, db)
+    except Exception as exc:
+        logger.warning(f"Post-publish sync warning: {exc}")
+
     return {
         "message": f"Content successfully published to {p_matched}.",
         "post_url": post_url,
         "published_at": pub_post.published_at,
         "external_post_id": post_id
+    }
+
+
+class MultiPublishRequest(BaseModel):
+    platforms: List[str]
+    caption: Optional[str] = None
+    hashtags: Optional[str] = None
+
+
+@router.post("/publish-multi/{content_id}")
+def publish_multi_content(
+    content_id: int,
+    req: MultiPublishRequest,
+    current_user: User = Depends(get_current_user),
+    org: Organisation = Depends(get_current_organisation),
+    db: Session = Depends(get_db)
+):
+    """
+    Step 9: Upload & Publish to multiple connected social media accounts.
+    Strictly requires verified human 'Approved' status before allowing publication.
+    Executes official platform API calls, persists post records, and triggers comment ingestion.
+    """
+    content = db.query(UploadedContent).filter(
+        UploadedContent.id == content_id,
+        UploadedContent.organisation_id == org.id
+    ).first()
+    if not content:
+        raise HTTPException(status_code=404, detail="Content not found.")
+
+    if content.approval_status != "Approved":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Publication Blocked: Content approval status is '{content.approval_status}'. Content must have human 'Approved' status before publication."
+        )
+
+    if not req.platforms:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please select at least one social media platform to publish."
+        )
+
+    if req.caption:
+        content.caption = req.caption.strip()
+
+    post_caption = f"{req.caption or content.caption or ''} {req.hashtags or ''}".strip()
+    results: List[Dict[str, Any]] = []
+    successful_platforms: List[str] = []
+    primary_post_url = None
+    primary_post_id = None
+
+    for raw_p in req.platforms:
+        p_lower = raw_p.strip().lower()
+        if "insta" in p_lower:
+            p_display = "Instagram"
+            p_key = "instagram"
+        elif "face" in p_lower:
+            p_display = "Facebook"
+            p_key = "facebook"
+        elif "link" in p_lower:
+            p_display = "LinkedIn"
+            p_key = "linkedin"
+        elif "you" in p_lower:
+            p_display = "YouTube"
+            p_key = "youtube"
+        elif "twit" in p_lower or p_lower == "x" or "x (" in p_lower:
+            p_display = "X (Twitter)"
+            p_key = "twitter"
+        else:
+            p_display = raw_p.strip().capitalize()
+            p_key = raw_p.strip().lower()
+
+        account = db.query(ConnectedSocialAccount).filter(
+            ConnectedSocialAccount.organisation_id == org.id,
+            ConnectedSocialAccount.status == "Connected",
+            (
+                (ConnectedSocialAccount.platform == p_display) |
+                (ConnectedSocialAccount.platform == "Twitter" if p_key == "twitter" else False) |
+                (ConnectedSocialAccount.platform.ilike(f"%{p_key}%"))
+            )
+        ).first()
+
+        if not account:
+            results.append({
+                "platform": p_display,
+                "status": "Failed",
+                "error": f"No active {p_display} account connected. Connect an authorized account in Integrations before publishing."
+            })
+            continue
+
+        raw_token = decrypt_token(account.access_token) if account.access_token else None
+        if not raw_token:
+            results.append({
+                "platform": p_display,
+                "status": "Failed",
+                "error": f"No valid OAuth access token stored for {p_display}. Please reconnect."
+            })
+            continue
+
+        try:
+            now_ts = int(datetime.now(timezone.utc).timestamp())
+            post_id = None
+            post_url = None
+            api_notes = None
+
+            if p_key == "instagram":
+                media_path = content.file_path or ""
+                is_public_url = media_path.startswith("http://") or media_path.startswith("https://")
+                if not is_public_url:
+                    results.append({
+                        "platform": p_display,
+                        "status": "Limitation",
+                        "error": "Instagram Graph API requires a publicly accessible HTTPS image URL. Local files cannot be ingested directly by Meta servers. Supported option: Host media on CDN / public cloud or connect Meta Content Ingestion webhook."
+                    })
+                    continue
+                else:
+                    ig_user_id = account.account_id
+                    c_resp = requests.post(
+                        f"https://graph.facebook.com/v19.0/{ig_user_id}/media",
+                        data={"image_url": media_path, "caption": post_caption, "access_token": raw_token},
+                        timeout=15
+                    )
+                    c_data = c_resp.json()
+                    if "id" in c_data:
+                        creation_id = c_data["id"]
+                        p_resp = requests.post(
+                            f"https://graph.facebook.com/v19.0/{ig_user_id}/media_publish",
+                            data={"creation_id": creation_id, "access_token": raw_token},
+                            timeout=15
+                        )
+                        p_data = p_resp.json()
+                        if "id" in p_data:
+                            post_id = p_data["id"]
+                            post_url = f"https://www.instagram.com/p/{post_id}/"
+                            api_notes = "Published via official Instagram Graph API."
+                        else:
+                            results.append({
+                                "platform": p_display,
+                                "status": "Failed",
+                                "error": p_data.get("error", {}).get("message", "Instagram media_publish failed.")
+                            })
+                            continue
+                    else:
+                        results.append({
+                            "platform": p_display,
+                            "status": "Failed",
+                            "error": c_data.get("error", {}).get("message", "Instagram container creation failed.")
+                        })
+                        continue
+
+            elif p_key == "facebook":
+                page_id = account.account_id
+                fb_resp = requests.post(
+                    f"https://graph.facebook.com/v19.0/{page_id}/feed",
+                    data={"message": post_caption, "access_token": raw_token},
+                    timeout=15
+                )
+                fb_data = fb_resp.json()
+                if "id" in fb_data:
+                    post_id = fb_data["id"]
+                    post_url = f"https://www.facebook.com/{post_id}"
+                    api_notes = "Published via official Facebook Graph API."
+                else:
+                    results.append({
+                        "platform": p_display,
+                        "status": "Failed",
+                        "error": fb_data.get("error", {}).get("message", "Facebook feed publishing failed.")
+                    })
+                    continue
+
+            elif p_key == "twitter":
+                tw_resp = requests.post(
+                    "https://api.twitter.com/2/tweets",
+                    json={"text": post_caption},
+                    headers={"Authorization": f"Bearer {raw_token}", "Content-Type": "application/json"},
+                    timeout=15
+                )
+                tw_data = tw_resp.json()
+                if tw_resp.status_code in (200, 201) and "data" in tw_data and "id" in tw_data["data"]:
+                    post_id = str(tw_data["data"]["id"])
+                    post_url = f"https://twitter.com/i/web/status/{post_id}"
+                    api_notes = "Published via official X (Twitter) API v2."
+                else:
+                    err_msg = tw_data.get("detail") or tw_data.get("title") or tw_resp.text
+                    results.append({
+                        "platform": p_display,
+                        "status": "Failed",
+                        "error": f"X API error: {err_msg}"
+                    })
+                    continue
+
+            elif p_key == "linkedin":
+                li_resp = requests.post(
+                    "https://api.linkedin.com/v2/ugcPosts",
+                    json={
+                        "author": f"urn:li:organization:{account.account_id}",
+                        "lifecycleState": "PUBLISHED",
+                        "specificContent": {
+                            "com.linkedin.ugc.ShareContent": {
+                                "shareCommentary": {"text": post_caption},
+                                "shareMediaCategory": "NONE"
+                            }
+                        },
+                        "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"}
+                    },
+                    headers={"Authorization": f"Bearer {raw_token}", "X-Restli-Protocol-Version": "2.0.0"},
+                    timeout=15
+                )
+                li_data = li_resp.json() if li_resp.text else {}
+                if li_resp.status_code in (200, 201) and "id" in li_data:
+                    post_id = li_data["id"]
+                    post_url = f"https://www.linkedin.com/feed/update/{post_id}/"
+                    api_notes = "Published via official LinkedIn Community API."
+                else:
+                    err_msg = li_data.get("message") or li_resp.text
+                    results.append({
+                        "platform": p_display,
+                        "status": "Failed",
+                        "error": f"LinkedIn API error: {err_msg}"
+                    })
+                    continue
+
+            elif p_key == "youtube":
+                results.append({
+                    "platform": p_display,
+                    "status": "Limitation",
+                    "error": "YouTube Data API v3 requires video media (.mp4, .mov). Static image assets cannot be published to YouTube video channels. Supported format: Video uploads or YouTube Community Posts."
+                })
+                continue
+
+            else:
+                results.append({
+                    "platform": p_display,
+                    "status": "Failed",
+                    "error": f"Unsupported platform: {p_display}"
+                })
+                continue
+
+            # Record success for this platform
+            results.append({
+                "platform": p_display,
+                "status": "Published",
+                "post_url": post_url,
+                "external_post_id": post_id,
+                "message": f"Successfully published to {p_display}.",
+                "details": api_notes
+            })
+            successful_platforms.append(p_display)
+            if not primary_post_url:
+                primary_post_url = post_url
+                primary_post_id = post_id
+
+            # Trigger automatic comment collection & sentiment analysis
+            try:
+                dispatch_platform_sync(account, db)
+            except Exception as sync_exc:
+                logger.warning(f"Post-publish sync warning for {p_display}: {sync_exc}")
+
+        except Exception as plat_exc:
+            logger.error(f"Error publishing to {p_display}: {plat_exc}", exc_info=True)
+            results.append({
+                "platform": p_display,
+                "status": "Failed",
+                "error": str(plat_exc)
+            })
+
+    # If any platform published, save to PublishedPost
+    if successful_platforms:
+        pub_post = db.query(PublishedPost).filter(
+            PublishedPost.content_id == content.id,
+            PublishedPost.organisation_id == org.id
+        ).first()
+
+        summary_platforms = ", ".join(successful_platforms)
+        if pub_post:
+            pub_post.platform = summary_platforms
+            pub_post.external_post_id = primary_post_id
+            pub_post.post_url = primary_post_url
+            pub_post.published_at = datetime.now(timezone.utc)
+            pub_post.status = "Published"
+            pub_post.publish_response = json.dumps(results)
+        else:
+            pub_post = PublishedPost(
+                organisation_id=org.id,
+                content_id=content.id,
+                platform=summary_platforms,
+                external_post_id=primary_post_id,
+                post_url=primary_post_url,
+                published_at=datetime.now(timezone.utc),
+                status="Published",
+                publish_response=json.dumps(results)
+            )
+            db.add(pub_post)
+
+        log = ActivityLog(
+            organisation_id=org.id,
+            user_id=current_user.id,
+            user_email=current_user.email,
+            action_type="PUBLISH_CONTENT_MULTI",
+            entity_type="PublishedPost",
+            description=f"Published approved creative '{content.title}' to {summary_platforms}."
+        )
+        db.add(log)
+        db.commit()
+
+    return {
+        "content_id": content.id,
+        "published_count": len(successful_platforms),
+        "failed_count": len([r for r in results if r["status"] in ("Failed", "Limitation")]),
+        "results": results
     }
 
 

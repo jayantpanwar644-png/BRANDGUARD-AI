@@ -7,8 +7,12 @@ import {
   CheckCheck, Scale, Award, Trash2, Download, ExternalLink,
   HelpCircle, Layers, MessageSquare, Plus, Lock, Sliders,
   ThumbsUp, UserCheck, SplitSquareVertical, SlidersHorizontal, Zap, Ban,
-  FileCheck, Loader2, Maximize2, Upload, Briefcase, ZoomIn, ZoomOut, RotateCcw
+  FileCheck, Loader2, Maximize2, Upload, Briefcase, ZoomIn, ZoomOut, RotateCcw,
+  Send, Share2, CheckCircle
 } from 'lucide-react';
+import {
+  InstagramIcon, FacebookIcon, LinkedinIcon, TwitterIcon, YouTubeIcon
+} from '../common/SocialIcons';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { 
@@ -25,7 +29,7 @@ interface UploadForAuditModalProps {
   initialError?: string | null;
 }
 
-type StepNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+type StepNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
   isOpen,
@@ -100,7 +104,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
   }, [guidelines, organisation?.id, brandProfile?.organisation_id]);
 
   const handleStepClick = (targetStep: StepNumber) => {
-    if (targetStep >= 4 && !hasValidSavedGuidelines) {
+    if (targetStep >= 4 && targetStep <= 8 && !hasValidSavedGuidelines) {
       setErrorMessage('Brand guidelines must be configured and saved in the database before proceeding to AI Audit.');
       if (!createdContent) {
         setCurrentStep(1);
@@ -109,8 +113,31 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
       }
       return;
     }
+    if (targetStep === 9) {
+      if (!hasValidSavedGuidelines) {
+        setErrorMessage('Brand guidelines must be configured before proceeding to publishing.');
+        return;
+      }
+      const isApproved = (createdContent?.approval_status === 'Approved') || (finalDecisionMade === 'Approved');
+      if (!isApproved) {
+        setErrorMessage('Step 9 Locked: Asset must receive human approval sign-off in Step 8 before proceeding to Social Media Publishing.');
+        return;
+      }
+    }
     setCurrentStep(targetStep);
   };
+
+  // STEP 9: Social Media Publishing State
+  const [selectedPublishPlatforms, setSelectedPublishPlatforms] = useState<string[]>([
+    'Instagram', 'Facebook', 'LinkedIn', 'YouTube', 'X (Twitter)'
+  ]);
+  const [publishCaption, setPublishCaption] = useState<string>('');
+  const [publishHashtags, setPublishHashtags] = useState<string>('');
+  const [isPublishingMulti, setIsPublishingMulti] = useState<boolean>(false);
+  const [publishResults, setPublishResults] = useState<any[] | null>(null);
+  const [integrationsStatus, setIntegrationsStatus] = useState<Record<string, any>>({});
+  const [connectedAccounts, setConnectedAccounts] = useState<any[]>([]);
+  const [loadingIntegrations, setLoadingIntegrations] = useState<boolean>(false);
 
   // STEP 4: Live AI Post Analysis State
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -216,15 +243,43 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
     };
   }, [previewUrl]);
 
-  // Sync content versions and AI suggestions on Step 7 & 8
+  // Sync content versions and AI suggestions on Step 7, 8 & 9
   useEffect(() => {
-    if (createdContent?.id && (currentStep === 7 || currentStep === 8)) {
+    if (createdContent?.id && (currentStep === 7 || currentStep === 8 || currentStep === 9)) {
       fetchContentVersions(createdContent.id);
     }
     if (createdContent?.id && currentStep === 7) {
       loadAiSuggestions(createdContent.id);
     }
   }, [createdContent?.id, currentStep]);
+
+  const loadIntegrationsData = async () => {
+    setLoadingIntegrations(true);
+    try {
+      const [statusRes, accsRes] = await Promise.all([
+        apiRequest<Record<string, any>>('/integrations/status').catch(() => ({})),
+        apiRequest<any[]>('/integrations/accounts').catch(() => [])
+      ]);
+      if (statusRes) setIntegrationsStatus(statusRes);
+      if (accsRes) setConnectedAccounts(accsRes);
+    } catch (err) {
+      console.error('Failed to load integrations status:', err);
+    } finally {
+      setLoadingIntegrations(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentStep === 9) {
+      loadIntegrationsData();
+      if (!publishCaption && (createdContent?.caption || caption)) {
+        setPublishCaption(createdContent?.caption || caption);
+      }
+      if (!publishHashtags && hashtags) {
+        setPublishHashtags(hashtags);
+      }
+    }
+  }, [currentStep, createdContent?.caption, caption, hashtags]);
 
   const loadBrandData = async () => {
     try {
@@ -877,7 +932,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
           method: 'POST',
           body: JSON.stringify({
             decision,
-            comments: reviewerComment || `Human sign-off approved for Version ${selectedVersionNum} by ${brandProfile?.company_name || 'Brand Reviewer'}.`,
+            comments: reviewerComment || `Human sign-off ${decision.toLowerCase()} for Version ${selectedVersionNum} by ${brandProfile?.company_name || 'Brand Reviewer'}.`,
             override_unverified_claims: true,
             version_number: selectedVersionNum
           })
@@ -887,6 +942,10 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
         if (refreshedContent) setCreatedContent(refreshedContent);
       }
       setFinalDecisionMade(decision);
+      if (decision === 'Changes Requested') {
+        // Return to existing step 7 (AI Fix) for revisions as requested by user
+        setCurrentStep(7);
+      }
     } catch (err: any) {
       alert(err.message || 'Approval submission failed.');
     } finally {
@@ -938,6 +997,65 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
     }
   };
 
+  const handleConnectPlatform = async (platformId: string) => {
+    try {
+      const res = await apiRequest<{ auth_url: string }>(`/integrations/oauth/${platformId}/authorize`);
+      if (res?.auth_url) {
+        window.location.href = res.auth_url;
+      } else {
+        alert(`OAuth authorization URL could not be generated for ${platformId}. Check your API credentials in Settings.`);
+      }
+    } catch (err: any) {
+      alert(err.message || `Failed to initiate OAuth authorization for ${platformId}.`);
+    }
+  };
+
+  const handleDisconnectPlatform = async (platformId: string) => {
+    try {
+      await apiRequest(`/integrations/oauth/${platformId}/disconnect`, { method: 'POST' });
+      await loadIntegrationsData();
+    } catch (err: any) {
+      alert(err.message || `Failed to disconnect ${platformId}.`);
+    }
+  };
+
+  const handleUploadAndPublish = async () => {
+    if (!createdContent?.id) {
+      alert('No active content record found to publish.');
+      return;
+    }
+    if (selectedPublishPlatforms.length === 0) {
+      alert('Please select at least one social media platform to publish.');
+      return;
+    }
+
+    setIsPublishingMulti(true);
+    setPublishResults(null);
+
+    try {
+      const res = await apiRequest<{
+        content_id: number;
+        published_count: number;
+        failed_count: number;
+        results: any[];
+      }>(`/integrations/publish-multi/${createdContent.id}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          platforms: selectedPublishPlatforms,
+          caption: publishCaption,
+          hashtags: publishHashtags
+        })
+      });
+
+      setPublishResults(res.results || []);
+      await loadIntegrationsData();
+    } catch (err: any) {
+      alert(err.message || 'Social publication failed. Ensure your content has human approval.');
+    } finally {
+      setIsPublishingMulti(false);
+    }
+  };
+
   // Helper step names
   const stepsList = [
     { num: 1, label: 'Upload Post' },
@@ -948,6 +1066,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
     { num: 6, label: 'Findings' },
     { num: 7, label: 'AI Fix' },
     { num: 8, label: 'Re-Audit' },
+    { num: 9, label: 'Approve & Publish' },
   ];
 
   if (!isOpen) return null;
@@ -995,7 +1114,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
           className="hidden"
         />
 
-        {/* Modal Header with 8-Step Breadcrumb Progress */}
+        {/* Modal Header with 9-Step Breadcrumb Progress */}
         <div className="px-6 py-4 border-b border-[#E4DFD5] bg-[#FCFAF5] flex-shrink-0">
           <div className="flex items-center justify-between pb-3 border-b border-[#EFEBE3]">
             <div className="flex items-center space-x-2.5">
@@ -1007,7 +1126,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
                   Smart AI Brand Audit &amp; Correction Workflow
                 </h3>
                 <span className="text-[11.5px] text-[#68736B]">
-                  Step {currentStep} of 8 — {stepsList[currentStep - 1].label}
+                  Step {currentStep} of 9 — {stepsList[currentStep - 1].label}
                 </span>
               </div>
             </div>
@@ -1026,7 +1145,9 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
             {stepsList.map((s) => {
               const isPassed = s.num < currentStep;
               const isCurrent = s.num === currentStep;
-              const isLocked = s.num >= 4 && !hasValidSavedGuidelines;
+              const isApproved = (createdContent?.approval_status === 'Approved') || (finalDecisionMade === 'Approved');
+              const isLocked = (s.num >= 4 && s.num <= 8 && !hasValidSavedGuidelines) ||
+                               (s.num === 9 && (!hasValidSavedGuidelines || !isApproved));
               return (
                 <button
                   key={s.num}
@@ -1042,7 +1163,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
                       ? 'bg-[#EBF0ED] text-[#244B3F] border border-[#C8D7CF] hover:bg-[#DCE7E1]'
                       : 'bg-[#F7F4EC] text-[#68736B] border border-[#E4DFD5] hover:bg-[#EFECE2] hover:text-[#242B27]'
                   }`}
-                  title={isLocked ? `Step ${s.num} locked: Brand guidelines required in database` : `Jump to Step ${s.num}: ${s.label}`}
+                  title={isLocked ? (s.num === 9 ? 'Step 9 locked: Human approval sign-off required in Step 8' : `Step ${s.num} locked: Brand guidelines required in database`) : `Jump to Step ${s.num}: ${s.label}`}
                 >
                   <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
                     isCurrent ? 'bg-white/20 text-[#FCFAF5]' : isPassed ? 'bg-[#C8D7CF] text-[#244B3F]' : 'bg-[#E4DFD5] text-[#68736B]'
@@ -4002,6 +4123,41 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
                       </button>
                     </div>
                   </div>
+
+                  {/* Approval / Rejection Status Guidance Banner */}
+                  {((createdContent?.approval_status === 'Approved') || (finalDecisionMade === 'Approved')) && (
+                    <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs mt-3 animate-in fade-in">
+                      <div className="flex items-center space-x-2.5 text-emerald-900">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                        <div>
+                          <span className="font-bold text-sm block">✓ Human Governance Sign-Off Complete</span>
+                          <span className="text-emerald-800 text-[11.5px]">
+                            Version {selectedVersionNum} approved for publication. Proceed to multi-platform publishing.
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentStep(9)}
+                        className="px-5 py-2.5 bg-[#244B3F] hover:bg-[#18382F] text-[#FCFAF5] font-bold rounded-xl shadow-xs cursor-pointer flex items-center space-x-2 transition-all hover:scale-102 shrink-0"
+                      >
+                        <span>Proceed to Step 9: Approve &amp; Publish</span>
+                        <ArrowRight className="w-4 h-4 text-[#C6A66B]" />
+                      </button>
+                    </div>
+                  )}
+
+                  {finalDecisionMade === 'Rejected' && (
+                    <div className="p-4 bg-rose-50 border border-rose-300 rounded-xl flex items-center space-x-2.5 text-xs text-rose-900 mt-3 animate-in fade-in">
+                      <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+                      <div>
+                        <span className="font-bold text-sm block">✕ Asset Rejected by Governance Reviewer</span>
+                        <span className="text-rose-800 text-[11.5px]">
+                          Social media publishing remains locked and disabled. Content cannot be broadcasted without compliance approval.
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* 8. High-Resolution Comparison Modal */}
@@ -4131,6 +4287,455 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
                       </div>
                       <div className="flex-1 p-4 bg-[#18382F]/10 overflow-auto flex items-center justify-center min-h-[400px]">
                         <img src={zoomedImage.url} alt={zoomedImage.title} className="max-h-[75vh] max-w-full object-contain rounded-lg drop-shadow-lg" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              STEP 9: APPROVE & PUBLISH TO CONNECTED SOCIAL MEDIA
+              ═══════════════════════════════════════════════════════════════════ */}
+          {currentStep === 9 && (() => {
+            const isApproved = (createdContent?.approval_status === 'Approved') || (finalDecisionMade === 'Approved');
+            const activeApprovedVer = contentVersions.find(v => v.version_number === selectedVersionNum) || contentVersions[0] || {
+              file_path: createdContent?.file_path || '',
+              caption: createdContent?.caption || '',
+              version_number: selectedVersionNum || 1
+            };
+            const activeImageSrc = formatAssetUrl(activeApprovedVer.file_path || createdContent?.file_path || '');
+
+            const platformChannels = [
+              {
+                id: 'instagram',
+                name: 'Instagram',
+                channelName: 'Instagram Professional & Creator',
+                Icon: InstagramIcon,
+                color: '#E1306C',
+                bgColor: 'rgba(225,48,108,0.10)',
+                statusKey: 'instagram'
+              },
+              {
+                id: 'facebook',
+                name: 'Facebook',
+                channelName: 'Facebook Page & Feed',
+                Icon: FacebookIcon,
+                color: '#1877F2',
+                bgColor: 'rgba(24,119,242,0.10)',
+                statusKey: 'facebook'
+              },
+              {
+                id: 'linkedin',
+                name: 'LinkedIn',
+                channelName: 'LinkedIn Organization Page',
+                Icon: LinkedinIcon,
+                color: '#0A66C2',
+                bgColor: 'rgba(10,102,194,0.10)',
+                statusKey: 'linkedin'
+              },
+              {
+                id: 'youtube',
+                name: 'YouTube',
+                channelName: 'YouTube Data API v3 (Channel Sync)',
+                Icon: YouTubeIcon,
+                color: '#FF0000',
+                bgColor: 'rgba(255,0,0,0.10)',
+                statusKey: 'youtube'
+              },
+              {
+                id: 'twitter',
+                name: 'X (Twitter)',
+                channelName: 'X (Twitter) Developer API v2',
+                Icon: TwitterIcon,
+                color: '#1D9BF0',
+                bgColor: 'rgba(29,155,240,0.10)',
+                statusKey: 'twitter'
+              }
+            ];
+
+            if (!isApproved) {
+              return (
+                <div className="p-8 sm:p-12 text-center space-y-5 bg-[#FCFAF5] rounded-2xl border border-[#E4DFD5]">
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700">
+                    <AlertTriangle className="w-8 h-8" />
+                  </div>
+                  <div className="space-y-1.5 max-w-md mx-auto">
+                    <h4 className="font-bold text-lg text-[#242B27]">Governance Approval Required</h4>
+                    <p className="text-xs text-[#68736B]">
+                      Social media publishing is strictly locked until an authorized reviewer approves the asset in Step 8 (Re-Audit &amp; Governance Sign-Off).
+                    </p>
+                  </div>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentStep(8)}
+                      className="px-5 py-2.5 bg-[#244B3F] hover:bg-[#18382F] text-[#FCFAF5] font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center space-x-2"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      <span>Return to Step 8: Re-Audit &amp; Approval</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            const togglePlatform = (pName: string) => {
+              if (selectedPublishPlatforms.includes(pName)) {
+                setSelectedPublishPlatforms(selectedPublishPlatforms.filter(p => p !== pName));
+              } else {
+                setSelectedPublishPlatforms([...selectedPublishPlatforms, pName]);
+              }
+            };
+
+            return (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                {/* 1. Header Banner */}
+                <div className="p-5 bg-gradient-to-r from-[#244B3F] to-[#18382F] text-[#FCFAF5] rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#C6A66B] text-[#18382F]">
+                        Step 9 Final Broadcast
+                      </span>
+                      <span className="text-xs text-white/80 font-medium">✓ Human Governance Sign-Off Verified</span>
+                    </div>
+                    <h3 className="text-lg font-bold font-serif text-[#FCFAF5] mt-1">
+                      Approve &amp; Publish to Connected Social Media
+                    </h3>
+                    <p className="text-xs text-white/75 mt-0.5 max-w-xl">
+                      Broadcast approved creative <strong className="text-white">Version {selectedVersionNum}</strong> to your official social channels. Ingests comments and audience reactions in real time into Audience Intelligence.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center space-x-2 self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentStep(8)}
+                      className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Review Sign-Off</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={loadIntegrationsData}
+                      disabled={loadingIntegrations}
+                      className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer"
+                      title="Refresh Account Status"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${loadingIntegrations ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Main Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Left Column: Creative Preview & Caption / Hashtags Editor (5 cols) */}
+                  <div className="lg:col-span-5 space-y-4">
+                    <div className="p-4 bg-white border border-[#E4DFD5] rounded-2xl space-y-3 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[#242B27] text-xs">Approved Creative Asset</span>
+                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10.5px] font-bold rounded-md flex items-center space-x-1">
+                          <Check className="w-3 h-3" />
+                          <span>Version {selectedVersionNum} Approved</span>
+                        </span>
+                      </div>
+
+                      {/* Asset Preview Box */}
+                      <div className="h-56 bg-[#18382F]/5 rounded-xl overflow-hidden flex items-center justify-center p-2 border border-[#E4DFD5]">
+                        {activeImageSrc ? (
+                          <img
+                            src={activeImageSrc}
+                            alt="Approved Creative"
+                            className="max-h-full max-w-full object-contain rounded-lg shadow-2xs"
+                          />
+                        ) : (
+                          <div className="text-center text-[#68736B] text-xs">
+                            <ImageIcon className="w-8 h-8 mx-auto text-[#93988F] mb-1" />
+                            <span>No image preview available</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Editable Caption */}
+                      <div className="space-y-1.5 pt-1">
+                        <label className="text-[11.5px] font-bold text-[#242B27] block">
+                          Post Caption (Editable)
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={publishCaption}
+                          onChange={(e) => setPublishCaption(e.target.value)}
+                          placeholder="Enter approved post caption for social publication..."
+                          className="w-full px-3 py-2 bg-[#FCFAF5] border border-[#E4DFD5] rounded-xl text-xs text-[#242B27] placeholder:text-[#68736B]/60 focus:outline-none focus:ring-1 focus:ring-[#244B3F]"
+                        />
+                      </div>
+
+                      {/* Editable Hashtags */}
+                      <div className="space-y-1.5">
+                        <label className="text-[11.5px] font-bold text-[#242B27] block">
+                          Hashtags
+                        </label>
+                        <input
+                          type="text"
+                          value={publishHashtags}
+                          onChange={(e) => setPublishHashtags(e.target.value)}
+                          placeholder="#BrandSafe #Compliance #Verified..."
+                          className="w-full px-3 py-2 bg-[#FCFAF5] border border-[#E4DFD5] rounded-xl text-xs text-[#242B27] placeholder:text-[#68736B]/60 focus:outline-none focus:ring-1 focus:ring-[#244B3F]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Platform Channels & Upload & Publish (7 cols) */}
+                  <div className="lg:col-span-7 space-y-4">
+                    <div className="p-4 bg-white border border-[#E4DFD5] rounded-2xl space-y-3.5 shadow-2xs">
+                      <div className="flex items-center justify-between border-b border-[#E4DFD5] pb-2.5">
+                        <div>
+                          <span className="font-bold text-[#242B27] text-xs block">
+                            Select Social Broadcast Platforms
+                          </span>
+                          <span className="text-[11px] text-[#68736B]">
+                            Connect your accounts via official OAuth and select broadcast destinations
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-bold text-[#244B3F] bg-[#EBF0ED] px-2 py-0.5 rounded-full">
+                          {selectedPublishPlatforms.length} of {platformChannels.length} selected
+                        </span>
+                      </div>
+
+                      {/* Channels List */}
+                      <div className="space-y-2.5">
+                        {platformChannels.map((p) => {
+                          const stat = integrationsStatus[p.statusKey] || {};
+                          const acc = connectedAccounts.find(
+                            a => a.platform.toLowerCase().includes(p.id) ||
+                                 (p.id === 'twitter' && (a.platform.toLowerCase().includes('twitter') || a.platform.toLowerCase() === 'x'))
+                          );
+                          const isConn = Boolean(stat.connected || (acc && acc.status === 'Connected'));
+                          const isSelected = selectedPublishPlatforms.includes(p.name);
+                          const handle = acc?.account_name || stat?.account_name;
+                          const avatar = acc?.profile_picture_url || stat?.profile_picture_url;
+
+                          return (
+                            <div
+                              key={p.id}
+                              className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                                isSelected && isConn
+                                  ? 'bg-[#FCFAF5] border-[#244B3F]/40 shadow-2xs'
+                                  : isConn
+                                  ? 'bg-white border-[#E4DFD5]'
+                                  : 'bg-[#F7F4EC]/60 border-[#E4DFD5]'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-3 min-w-0">
+                                {/* Checkbox */}
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => togglePlatform(p.name)}
+                                  className="w-4 h-4 rounded text-[#244B3F] focus:ring-[#244B3F] border-[#E4DFD5] cursor-pointer"
+                                />
+
+                                {/* Icon */}
+                                <div
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                                  style={{ backgroundColor: p.bgColor, color: p.color }}
+                                >
+                                  <p.Icon className="w-4 h-4" />
+                                </div>
+
+                                {/* Info */}
+                                <div className="min-w-0">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-bold text-[#242B27] text-xs truncate">{p.name}</span>
+                                    {isConn ? (
+                                      <span className="px-2 py-0.2 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">
+                                        Connected
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-0.2 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded-full">
+                                        Not Connected
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-[#68736B] flex items-center space-x-1.5 truncate">
+                                    {avatar && (
+                                      <img src={avatar} alt="Profile" className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
+                                    )}
+                                    <span className="truncate">
+                                      {isConn ? (handle ? `${handle}` : p.channelName) : p.channelName}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Actions */}
+                              <div className="flex items-center space-x-2 shrink-0">
+                                {isConn ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDisconnectPlatform(p.id)}
+                                    className="px-2.5 py-1 text-[11px] text-[#93988F] hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    Disconnect
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleConnectPlatform(p.id)}
+                                    className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-[#E4DFD5] hover:bg-[#F7F4EC] text-[#242B27] rounded-lg transition-colors cursor-pointer flex items-center space-x-1 shadow-2xs"
+                                  >
+                                    <span>Connect</span>
+                                    <ExternalLink className="w-3 h-3 text-[#68736B]" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Prominent Upload & Publish Button */}
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={handleUploadAndPublish}
+                          disabled={isPublishingMulti || selectedPublishPlatforms.length === 0}
+                          className="w-full py-3 bg-[#244B3F] hover:bg-[#18382F] disabled:opacity-50 text-[#FCFAF5] font-bold text-sm rounded-xl shadow-xs cursor-pointer flex items-center justify-center space-x-2 transition-all hover:scale-[1.01]"
+                        >
+                          {isPublishingMulti ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin text-[#C6A66B]" />
+                              <span>Publishing across {selectedPublishPlatforms.length} platform(s)...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-4 h-4 text-[#C6A66B]" />
+                              <span>Upload &amp; Publish ({selectedPublishPlatforms.length} Channels)</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Publishing Results Breakdown & Live Comment Ingestion */}
+                {publishResults && (
+                  <div className="p-5 bg-white border border-[#E4DFD5] rounded-2xl space-y-4 shadow-2xs animate-in fade-in">
+                    <div className="flex items-center justify-between border-b border-[#E4DFD5] pb-2.5">
+                      <div className="flex items-center space-x-2">
+                        <FileCheck className="w-5 h-5 text-[#244B3F]" />
+                        <h4 className="font-bold text-sm text-[#242B27]">Publishing Transmission Results</h4>
+                      </div>
+                      <span className="text-xs text-[#68736B]">
+                        Recorded in Database &amp; Audit Logs
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {publishResults.map((r, idx) => {
+                        const isPublished = r.status === 'Published';
+                        const isLimitation = r.status === 'Limitation';
+
+                        return (
+                          <div
+                            key={idx}
+                            className={`p-3.5 rounded-xl border space-y-1.5 text-xs ${
+                              isPublished
+                                ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                                : isLimitation
+                                ? 'bg-amber-50/70 border-amber-200 text-amber-950'
+                                : 'bg-rose-50/70 border-rose-200 text-rose-950'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between font-bold">
+                              <span className="text-xs">{r.platform}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+                                isPublished ? 'bg-emerald-200 text-emerald-900' :
+                                isLimitation ? 'bg-amber-200 text-amber-900' :
+                                'bg-rose-200 text-rose-900'
+                              }`}>
+                                {r.status}
+                              </span>
+                            </div>
+
+                            {isPublished && (
+                              <div className="space-y-1 text-[11.5px]">
+                                <p className="text-emerald-800">{r.message || 'Transmitted successfully to platform API.'}</p>
+                                {r.post_url && (
+                                  <a
+                                    href={r.post_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[#244B3F] font-bold inline-flex items-center space-x-1 hover:underline"
+                                  >
+                                    <span>View Live Post</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                )}
+                                {r.external_post_id && (
+                                  <div className="text-[10px] text-emerald-700/80">ID: {r.external_post_id}</div>
+                                )}
+                              </div>
+                            )}
+
+                            {isLimitation && (
+                              <div className="space-y-1 text-[11px] text-amber-800">
+                                <p>{r.error}</p>
+                              </div>
+                            )}
+
+                            {!isPublished && !isLimitation && (
+                              <div className="space-y-1 text-[11px] text-rose-800">
+                                <p>{r.error || 'Failed to transmit to platform endpoint.'}</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Automatic Comment Ingestion & Intelligence Card */}
+                    <div className="p-4 bg-[#FCFAF5] border border-[#C6A66B]/40 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center space-x-3 text-[#242B27]">
+                        <div className="w-8 h-8 rounded-lg bg-[#C6A66B]/20 text-[#244B3F] flex items-center justify-center shrink-0">
+                          <Sparkles className="w-4 h-4 text-[#244B3F]" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-xs block">
+                            Comment Collection &amp; AI Sentiment Streaming Active
+                          </span>
+                          <span className="text-[#68736B] text-[11.5px]">
+                            Customer comments, mentions, and replies are ingested in real time into Audience Intelligence and analyzed for brand reputation risks.
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            navigate('/app/audience-intelligence');
+                          }}
+                          className="px-3.5 py-1.5 bg-[#244B3F] hover:bg-[#18382F] text-[#FCFAF5] font-semibold rounded-lg text-xs cursor-pointer flex items-center space-x-1 transition-all"
+                        >
+                          <span>Audience Intelligence</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            navigate('/app/brand-governance');
+                          }}
+                          className="px-3 py-1.5 bg-white border border-[#E4DFD5] hover:bg-[#F7F4EC] text-[#242B27] font-semibold rounded-lg text-xs cursor-pointer transition-all"
+                        >
+                          Governance Hub
+                        </button>
                       </div>
                     </div>
                   </div>

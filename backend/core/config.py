@@ -75,6 +75,11 @@ class Settings(BaseModel):
     GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
     GOOGLE_REDIRECT_URI: str = os.getenv("GOOGLE_REDIRECT_URI", "")
 
+    # OAuth — Twitter / X
+    TWITTER_API_KEY: str = os.getenv("TWITTER_API_KEY", "")
+    TWITTER_API_SECRET: str = os.getenv("TWITTER_API_SECRET", "")
+    TWITTER_REDIRECT_URI: str = os.getenv("TWITTER_REDIRECT_URI", "")
+
     # Webhooks
     META_WEBHOOK_VERIFY_TOKEN: str = os.getenv("META_WEBHOOK_VERIFY_TOKEN", "brandguard_webhook_2026")
 
@@ -107,6 +112,10 @@ class Settings(BaseModel):
             if self.GOOGLE_REDIRECT_URI:
                 return self.GOOGLE_REDIRECT_URI
             return f"{self.BACKEND_URL.rstrip('/')}/api/integrations/oauth/youtube/callback"
+        elif p in ("twitter", "x"):
+            if self.TWITTER_REDIRECT_URI:
+                return self.TWITTER_REDIRECT_URI
+            return f"{self.BACKEND_URL.rstrip('/')}/api/integrations/oauth/twitter/callback"
         return f"{self.BACKEND_URL.rstrip('/')}/api/integrations/oauth/{p}/callback"
 
     def is_provider_configured(self, platform: str) -> bool:
@@ -118,6 +127,8 @@ class Settings(BaseModel):
             return bool(self.LINKEDIN_CLIENT_ID.strip() and self.LINKEDIN_CLIENT_SECRET.strip())
         elif p == "youtube":
             return bool(self.GOOGLE_CLIENT_ID.strip() and self.GOOGLE_CLIENT_SECRET.strip())
+        elif p in ("twitter", "x"):
+            return bool(self.TWITTER_API_KEY.strip() and self.TWITTER_API_SECRET.strip())
         return False
 
 settings = Settings()
