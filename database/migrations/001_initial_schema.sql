@@ -1,0 +1,2 @@
+-- BrandGuard AI initial database migration
+-- See database/schema/supabase_schema.sql for the complete DDL
