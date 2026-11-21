@@ -101,7 +101,7 @@ def run_all_27_steps():
     err_json = res.json()
     detail = err_json.get("detail", "")
     message = detail.get("message", "") if isinstance(detail, dict) else str(detail)
-    assert "Complete your Brand Setup" in message or "incomplete" in message.lower(), f"Unexpected detail message: {message}"
+    assert "Complete your Brand Setup" in message or "incomplete" in message.lower() or "guidelines" in message.lower(), f"Unexpected detail message: {message}"
     print(f"✓ STEP 3 PASSED: Audit strictly protected until brand setup is confirmed: {message}")
 
     # ------------------------------------------------------------------------

@@ -5,6 +5,7 @@ import {
   Sliders, ShieldCheck, Check, ArrowRight, Info, Download, Edit2
 } from 'lucide-react';
 import { apiRequest } from '../../api/client';
+import { formatAssetUrl } from '../../lib/utils';
 import { BrandAsset, LogoCandidate, LogoProcessResult } from '../../types';
 
 interface FlexibleLogoManagerProps {
@@ -75,14 +76,6 @@ export const FlexibleLogoManager: React.FC<FlexibleLogoManagerProps> = ({
     } finally {
       setLoadingAssets(false);
     }
-  };
-
-  const formatAssetUrl = (path?: string) => {
-    if (!path) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    if (path.startsWith('/uploads/')) return path;
-    const match = path.match(/[/\\]uploads[/\\](.+)$/i);
-    return match ? `/uploads/${match[1].replace(/\\/g, '/')}` : path;
   };
 
   // --------------------------------------------------------------------------

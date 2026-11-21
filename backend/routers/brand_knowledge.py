@@ -32,12 +32,22 @@ def check_logo_file_exists(path_str: Optional[str]) -> bool:
         p = Path(path_str)
         if p.exists():
             return True
-        if path_str.startswith("/uploads/"):
-            rel = path_str[len("/uploads/"):]
-            return (settings.UPLOAD_DIR / rel).exists()
-        return (settings.UPLOAD_DIR / "logos" / p.name).exists()
+        clean_p = path_str.replace('\\', '/')
+        if clean_p.startswith('/uploads/'):
+            cand = settings.UPLOAD_DIR / clean_p[len('/uploads/'):]
+            if cand.exists():
+                return True
+        if clean_p.startswith('uploads/'):
+            cand = settings.UPLOAD_DIR / clean_p[len('uploads/'):]
+            if cand.exists():
+                return True
+        for sub in ["", "logos", "logos/rasters", "logos/originals", "logos/candidates", "images", "evidence"]:
+            cand = settings.UPLOAD_DIR / sub / p.name
+            if cand.exists():
+                return True
     except Exception:
-        return False
+        pass
+    return False
 
 
 # ─── Brand Setup Status Helper ───────────────────────────────────────────────

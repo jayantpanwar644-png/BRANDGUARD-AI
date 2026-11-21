@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../api/client';
+import { formatAssetUrl } from '../lib/utils';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
@@ -321,7 +322,7 @@ export const ApprovalCenter: React.FC = () => {
                   </div>
 
                   <div className="rounded-xl bg-[#F8FAFC] overflow-hidden border border-[#E2E8F0] h-44 flex items-center justify-center p-2">
-                    <img src={item.file_path} alt={item.title} className="max-h-full object-contain rounded-lg" />
+                    <img src={formatAssetUrl(item.file_path)} alt={item.title} className="max-h-full object-contain rounded-lg" />
                   </div>
 
                   <div>
@@ -607,7 +608,7 @@ export const ApprovalCenter: React.FC = () => {
               {/* Media Preview */}
               <div className="space-y-3">
                 <div className="bg-[#F8FAFC] rounded-xl p-3 border border-[#E2E8F0] flex items-center justify-center">
-                  <img src={selectedContent.file_path} alt={selectedContent.title} className="max-h-72 object-contain rounded-lg" />
+                  <img src={formatAssetUrl(selectedContent.file_path)} alt={selectedContent.title} className="max-h-72 object-contain rounded-lg" />
                 </div>
                 <div className="p-3.5 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] text-xs text-[#475569]">
                   <strong className="text-[#172033] block mb-1">Marketing Copy / Caption:</strong>

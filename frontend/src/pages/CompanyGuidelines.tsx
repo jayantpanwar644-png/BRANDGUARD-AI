@@ -8,6 +8,7 @@ import {
   Info, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import { apiRequest } from '../api/client';
+import { formatAssetUrl } from '../lib/utils';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
@@ -89,18 +90,6 @@ export const CompanyGuidelines: React.FC = () => {
   const [showAddAssetModal, setShowAddAssetModal] = useState(false);
   const [targetAssetType, setTargetAssetType] = useState<'Primary Logo' | 'Alternate Logo' | 'Product Image'>('Primary Logo');
   const [assetDescription, setAssetDescription] = useState('');
-
-  // Helper to format uploaded file paths
-  const formatAssetUrl = (path?: string) => {
-    if (!path) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    if (path.startsWith('/uploads/')) return path;
-    const match = path.match(/[/\\]uploads[/\\](.+)$/i);
-    if (match) {
-      return `/uploads/${match[1].replace(/\\/g, '/')}`;
-    }
-    return path;
-  };
 
   useEffect(() => {
     loadAllData();

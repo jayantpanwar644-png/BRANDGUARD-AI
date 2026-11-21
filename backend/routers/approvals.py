@@ -55,6 +55,12 @@ def make_approval_decision(
 
     # Check approval rules
     if req.decision == "Approved":
+        if content.context_score is not None and content.context_score < 50:
+            raise HTTPException(
+                status_code=400,
+                detail="Approval Blocked: Content was classified as out-of-context for this organisation. Out-of-context creatives cannot be approved."
+            )
+
         unverified_claims = db.query(DetectedClaim).filter(
             DetectedClaim.content_id == content.id,
             DetectedClaim.verification_status.in_(["Not Verified", "Needs Human Review", "Pending Evidence"])

@@ -11,6 +11,7 @@ import {
   Download, Loader2, Briefcase
 } from 'lucide-react';
 import { apiRequest } from '../api/client';
+import { formatAssetUrl } from '../lib/utils';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
@@ -932,7 +933,7 @@ export const BrandGovernance: React.FC = () => {
                       <span className="text-[11px] font-bold uppercase tracking-wider text-[#68736B] block font-sans">Version 1 (Original)</span>
                       <div className="aspect-square rounded-2xl bg-[#F7F4EC] border border-[#E4DFD5] overflow-hidden flex items-center justify-center p-2 relative shadow-inner">
                         <img 
-                          src={contentDetail.file_path} 
+                          src={formatAssetUrl(contentDetail.file_path)} 
                           alt="Original Artwork" 
                           className="max-h-full max-w-full object-contain rounded-xl shadow-2xs"
                         />
@@ -943,7 +944,7 @@ export const BrandGovernance: React.FC = () => {
                       <span className="text-[11px] font-bold uppercase tracking-wider text-[#244B3F] block font-sans">Version 2 (AI Revised)</span>
                       <div className="aspect-square rounded-2xl bg-[#EBF0ED] border border-[#C8D7CF] overflow-hidden flex items-center justify-center p-2 relative shadow-inner">
                         <img 
-                          src={contentDetail.revised_file_path} 
+                          src={formatAssetUrl(contentDetail.revised_file_path)} 
                           alt="Revised Artwork" 
                           className="max-h-full max-w-full object-contain rounded-xl shadow-2xs"
                         />
@@ -953,7 +954,7 @@ export const BrandGovernance: React.FC = () => {
                 ) : (
                   <div className="aspect-square rounded-2xl bg-[#F7F4EC] border border-[#E4DFD5] overflow-hidden flex items-center justify-center p-3 relative group shadow-inner">
                     <img 
-                      src={contentDetail.file_path} 
+                      src={formatAssetUrl(contentDetail.file_path)} 
                       alt={contentDetail.title} 
                       className="max-h-full max-w-full object-contain rounded-xl shadow-2xs transition-transform duration-300 group-hover:scale-102"
                     />

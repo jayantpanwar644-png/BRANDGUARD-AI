@@ -8,11 +8,12 @@ import {
   HelpCircle, Layers, MessageSquare, Plus, Lock, Sliders,
   ThumbsUp, UserCheck, SplitSquareVertical, SlidersHorizontal, Zap, Ban,
   FileCheck, Loader2, Maximize2, Upload, Briefcase, ZoomIn, ZoomOut, RotateCcw,
-  Send, Share2, CheckCircle
+  Send, Share2, CheckCircle, ShieldAlert
 } from 'lucide-react';
 import {
   InstagramIcon, FacebookIcon, LinkedinIcon, TwitterIcon, YouTubeIcon
 } from '../common/SocialIcons';
+import { formatAssetUrl } from '../../lib/utils';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { 
@@ -21,6 +22,14 @@ import {
 } from '../../types';
 import { FlexibleLogoManager } from '../brand/FlexibleLogoManager';
 import { WarpCarousel, WarpCard } from '../ui/warp-carousel';
+
+const SOCIAL_LOGIN_URLS: Record<string, string> = {
+  Instagram: "https://www.instagram.com/accounts/login/",
+  Facebook: "https://www.facebook.com/login/",
+  LinkedIn: "https://www.linkedin.com/login",
+  YouTube: "https://accounts.google.com/",
+  "X (Twitter)": "https://x.com/i/flow/login",
+};
 
 interface UploadForAuditModalProps {
   isOpen: boolean;
@@ -85,6 +94,10 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
   const [newRuleSeverity, setNewRuleSeverity] = useState<'High' | 'Medium' | 'Low'>('Medium');
   const [newRuleDesc, setNewRuleDesc] = useState('');
 
+  // Track mandatory completion of Step 2 (Brand Info) and Step 3 (Guidelines)
+  const [brandInfoConfirmed, setBrandInfoConfirmed] = useState<boolean>(false);
+  const [guidelinesConfirmed, setGuidelinesConfirmed] = useState<boolean>(false);
+
   // Strict database-backed validation: verify that at least one valid, active, non-draft guideline
   // persisted in the database belongs to the current authenticated company.
   const hasValidSavedGuidelines = useMemo(() => {
@@ -103,27 +116,78 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
     );
   }, [guidelines, organisation?.id, brandProfile?.organisation_id]);
 
-  const handleStepClick = (targetStep: StepNumber) => {
-    if (targetStep >= 4 && targetStep <= 8 && !hasValidSavedGuidelines) {
-      setErrorMessage('Brand guidelines must be configured and saved in the database before proceeding to AI Audit.');
-      if (!createdContent) {
-        setCurrentStep(1);
-      } else {
-        setCurrentStep(3);
-      }
+  const handleStepClick = async (targetStep: StepNumber) => {
+    if (targetStep === 1) {
+      setErrorMessageSafe(null);
+      setCurrentStep(1);
       return;
     }
+
+    // MANDATORY BRAND CONTEXT BLOCKING:
+    // If creative is out-of-context (context_score < 50), strictly block navigating to Step 2 or any subsequent step.
+    if (targetStep >= 2) {
+      if (createdContent && createdContent.context_score !== undefined && createdContent.context_score !== null && createdContent.context_score < 50) {
+        setErrorMessageSafe("Your uploaded creative does not match your company's business context. Please upload a relevant asset before continuing.");
+        setCurrentStep(1);
+        return;
+      }
+    }
+
+    if (targetStep === 2) {
+      if (!createdContent && !selectedFile) {
+        setErrorMessageSafe('Please upload a creative asset in Step 1 first.');
+        setCurrentStep(1);
+        return;
+      }
+      setErrorMessageSafe(null);
+      setCurrentStep(2);
+      return;
+    }
+    if (targetStep === 3) {
+      if (!brandInfoConfirmed) {
+        setErrorMessageSafe('Step 2 Mandatory: Please confirm company brand information before viewing guidelines.');
+        if (!createdContent && selectedFile) {
+          await handleSavePostStep1();
+        } else if (!createdContent) {
+          setCurrentStep(1);
+          return;
+        }
+        setCurrentStep(2);
+        return;
+      }
+      setErrorMessageSafe(null);
+      setCurrentStep(3);
+      return;
+    }
+    if (targetStep >= 4 && targetStep <= 8) {
+      if (!createdContent) {
+        setErrorMessageSafe('Please upload a creative asset in Step 1 first.');
+        setCurrentStep(1);
+        return;
+      }
+      if (!brandInfoConfirmed) {
+        setErrorMessageSafe('Step 2 Mandatory: Brand Info must be reviewed and confirmed before proceeding to AI Audit.');
+        setCurrentStep(2);
+        return;
+      }
+      if (!guidelinesConfirmed) {
+        setErrorMessageSafe('Step 3 Mandatory: Brand guidelines must be reviewed and confirmed before proceeding to AI Audit.');
+        setCurrentStep(3);
+        return;
+      }
+    }
     if (targetStep === 9) {
-      if (!hasValidSavedGuidelines) {
-        setErrorMessage('Brand guidelines must be configured before proceeding to publishing.');
+      if (!brandInfoConfirmed || !guidelinesConfirmed) {
+        setErrorMessageSafe('Brand Info and Guidelines must be confirmed before proceeding to publishing.');
         return;
       }
       const isApproved = (createdContent?.approval_status === 'Approved') || (finalDecisionMade === 'Approved');
       if (!isApproved) {
-        setErrorMessage('Step 9 Locked: Asset must receive human approval sign-off in Step 8 before proceeding to Social Media Publishing.');
+        setErrorMessageSafe('Step 9 Locked: Asset must receive human approval sign-off in Step 8 before proceeding to Social Media Publishing.');
         return;
       }
     }
+    setErrorMessageSafe(null);
     setCurrentStep(targetStep);
   };
 
@@ -216,16 +280,38 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
   const [showLargeCompareModal, setShowLargeCompareModal] = useState(false);
   const finalImageFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Global Error & Status
-  const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
+  // Global Error & Status (Strictly filter out any OAuth or credential error notices)
+  const isOauthError = (msg: string | null | undefined): boolean => {
+    if (!msg) return false;
+    const lower = msg.toLowerCase();
+    return lower.includes('oauth') || lower.includes('meta_app') || lower.includes('credentials not configured') || lower.includes('missing environment variable');
+  };
+
+  const [errorMessage, setErrorMessage] = useState<string | null>(() => {
+    return isOauthError(initialError) ? null : (initialError || null);
+  });
+
+  const setErrorMessageSafe = (msg: string | null) => {
+    if (isOauthError(msg)) {
+      setErrorMessage(null);
+      return;
+    }
+    setErrorMessage(msg);
+  };
 
   const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
-  const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
+  const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.mp4', '.mov', '.avi', '.mkv', '.webm'];
 
   // Initialize and load brand profile on open or when active organisation changes
   useEffect(() => {
     if (isOpen) {
-      setErrorMessage(initialError || null);
+      if (isOauthError(initialError)) {
+        setErrorMessage(null);
+      } else {
+        setErrorMessage(initialError || null);
+      }
+      setBrandInfoConfirmed(false);
+      setGuidelinesConfirmed(false);
       loadBrandData();
       if (initialFile) {
         processCreativeFile(initialFile);
@@ -235,6 +321,14 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
       }
     }
   }, [isOpen, initialError, initialFile, organisation?.id]);
+
+  // Strict Context Guard: If asset is out-of-context (score < 50), strictly lock to Step 1
+  useEffect(() => {
+    if (createdContent && createdContent.context_score !== undefined && createdContent.context_score !== null && createdContent.context_score < 50 && currentStep > 1) {
+      setErrorMessageSafe("Your uploaded creative does not match your company's business context. Please upload a relevant asset before continuing.");
+      setCurrentStep(1);
+    }
+  }, [createdContent?.context_score, currentStep]);
 
   // Clean up object URLs
   useEffect(() => {
@@ -271,6 +365,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
 
   useEffect(() => {
     if (currentStep === 9) {
+      setErrorMessage(null);
       loadIntegrationsData();
       if (!publishCaption && (createdContent?.caption || caption)) {
         setPublishCaption(createdContent?.caption || caption);
@@ -319,26 +414,19 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
     }
   };
 
-  const formatAssetUrl = (path?: string) => {
-    if (!path) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    if (path.startsWith('/uploads/')) return path;
-    const match = path.match(/[/\\]uploads[/\\](.+)$/i);
-    return match ? `/uploads/${match[1].replace(/\\/g, '/')}` : path;
-  };
-
   // --------------------------------------------------------------------------
-  // STEP 1 HANDLERS: Post Upload
+  // STEP 1 HANDLERS: Post Upload & Context Verification
   // --------------------------------------------------------------------------
   const processCreativeFile = (file: File) => {
-    setErrorMessage(null);
+    setErrorMessageSafe(null);
+    setCreatedContent(null);
     const ext = '.' + file.name.split('.').pop()?.toLowerCase();
-    if (!ALLOWED_EXTENSIONS.includes(ext) && !file.type.startsWith('image/')) {
-      setErrorMessage(`Unsupported format "${ext}". Supported: JPG, JPEG, PNG, WEBP.`);
+    if (!ALLOWED_EXTENSIONS.includes(ext) && !file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+      setErrorMessageSafe(`Unsupported format "${ext}". Supported: JPG, JPEG, PNG, WEBP, MP4, MOV, WEBM.`);
       return;
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      setErrorMessage('File size exceeds 50MB limit.');
+      setErrorMessageSafe('File size exceeds 50MB limit.');
       return;
     }
 
@@ -351,15 +439,15 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
     setTitle(formattedTitle || 'Campaign Visual Asset');
   };
 
-  const handleSavePostStep1 = async (e?: React.FormEvent, runDirectAudit: boolean = false) => {
+  const handleSavePostStep1 = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!selectedFile) {
-      setErrorMessage('Please select a creative image to upload.');
+      setErrorMessageSafe('Please select a creative asset to upload.');
       return;
     }
 
     setIsSavingPost(true);
-    setErrorMessage(null);
+    setErrorMessageSafe(null);
 
     try {
       const formData = new FormData();
@@ -374,20 +462,22 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
         body: formData
       });
 
-      const content = res.content || res;
+      const content: UploadedContent = res.content || res;
       setCreatedContent(content);
 
-      // Workflow Logic:
-      // IF valid saved guidelines exist -> allow direct AI Audit if requested
-      // IF valid saved guidelines do NOT exist -> force completion of Step 2 (Brand Info) & Step 3 (Guidelines)
-      if (runDirectAudit && hasValidSavedGuidelines) {
-        setCurrentStep(4);
-        handleStartAnalysisStep4(content);
-      } else {
-        setCurrentStep(2);
+      // STRICT CONTEXT VERIFICATION & IRRELEVANT CONTENT BLOCKING:
+      // If creative is irrelevant / out-of-context (score < 50), immediately block progression to Step 2.
+      if (content.context_score !== undefined && content.context_score !== null && content.context_score < 50) {
+        setErrorMessageSafe("Your uploaded creative does not match your company's business context. Please upload a relevant asset before continuing.");
+        setCurrentStep(1);
+        return;
       }
+
+      // MANDATORY WORKFLOW: Brand Info & Guidelines MUST NEVER BE SKIPPED.
+      // After saving Step 1 (Upload Post), navigate directly to Step 2 (Brand Info).
+      setCurrentStep(2);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to upload creative asset.');
+      setErrorMessageSafe(err.message || 'Failed to upload creative asset.');
     } finally {
       setIsSavingPost(false);
     }
@@ -446,12 +536,19 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
       });
 
       await loadBrandData();
+      setBrandInfoConfirmed(true);
       setCurrentStep(3);
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to update company brand configuration.');
     } finally {
       setIsSavingBrandInfo(false);
     }
+  };
+
+  const handleConfirmGuidelinesStep3 = async () => {
+    setGuidelinesConfirmed(true);
+    setCurrentStep(4);
+    await handleStartAnalysisStep4(createdContent);
   };
 
   // --------------------------------------------------------------------------
@@ -997,19 +1094,6 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
     }
   };
 
-  const handleConnectPlatform = async (platformId: string) => {
-    try {
-      const res = await apiRequest<{ auth_url: string }>(`/integrations/oauth/${platformId}/authorize`);
-      if (res?.auth_url) {
-        window.location.href = res.auth_url;
-      } else {
-        alert(`OAuth authorization URL could not be generated for ${platformId}. Check your API credentials in Settings.`);
-      }
-    } catch (err: any) {
-      alert(err.message || `Failed to initiate OAuth authorization for ${platformId}.`);
-    }
-  };
-
   const handleDisconnectPlatform = async (platformId: string) => {
     try {
       await apiRequest(`/integrations/oauth/${platformId}/disconnect`, { method: 'POST' });
@@ -1146,8 +1230,10 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
               const isPassed = s.num < currentStep;
               const isCurrent = s.num === currentStep;
               const isApproved = (createdContent?.approval_status === 'Approved') || (finalDecisionMade === 'Approved');
-              const isLocked = (s.num >= 4 && s.num <= 8 && !hasValidSavedGuidelines) ||
-                               (s.num === 9 && (!hasValidSavedGuidelines || !isApproved));
+              const isLocked =
+                (s.num === 3 && !brandInfoConfirmed) ||
+                (s.num >= 4 && s.num <= 8 && (!brandInfoConfirmed || !guidelinesConfirmed)) ||
+                (s.num === 9 && (!isApproved || !guidelinesConfirmed));
               return (
                 <button
                   key={s.num}
@@ -1163,7 +1249,15 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
                       ? 'bg-[#EBF0ED] text-[#244B3F] border border-[#C8D7CF] hover:bg-[#DCE7E1]'
                       : 'bg-[#F7F4EC] text-[#68736B] border border-[#E4DFD5] hover:bg-[#EFECE2] hover:text-[#242B27]'
                   }`}
-                  title={isLocked ? (s.num === 9 ? 'Step 9 locked: Human approval sign-off required in Step 8' : `Step ${s.num} locked: Brand guidelines required in database`) : `Jump to Step ${s.num}: ${s.label}`}
+                  title={
+                    isLocked
+                      ? s.num === 9
+                        ? 'Step 9 locked: Human approval sign-off required in Step 8'
+                        : s.num === 3
+                        ? 'Step 3 locked: Please confirm Step 2 (Brand Info) first'
+                        : 'Step locked: Brand Info and Guidelines are mandatory before AI Audit'
+                      : `Jump to Step ${s.num}: ${s.label}`
+                  }
                 >
                   <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
                     isCurrent ? 'bg-white/20 text-[#FCFAF5]' : isPassed ? 'bg-[#C8D7CF] text-[#244B3F]' : 'bg-[#E4DFD5] text-[#68736B]'
@@ -1178,14 +1272,14 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
         </div>
 
         {/* Modal Error Banner */}
-        {errorMessage && (
+        {errorMessage && !isOauthError(errorMessage) && (
           <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start space-x-2.5 text-xs text-rose-800 animate-in fade-in">
             <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <span className="font-semibold">Notice: </span>
               <span>{errorMessage}</span>
             </div>
-            <button onClick={() => setErrorMessage(null)} className="text-rose-500 hover:text-rose-700">
+            <button onClick={() => setErrorMessageSafe(null)} className="text-rose-500 hover:text-rose-700">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -1196,169 +1290,363 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
           {/* ========================================================================= */}
           {/* STEP 1: UPLOAD THE ACTUAL POST                                            */}
           {/* ========================================================================= */}
-          {currentStep === 1 && (
-            <div className="space-y-5 animate-in fade-in duration-150">
-              <div className="border-b border-[#F1F5F9] pb-3">
-                <h4 className="text-[16px] font-bold text-[#172033] font-heading">
-                  Step 1: Upload Post for Brand Governance
-                </h4>
-                <p className="text-[13px] text-[#64748B] mt-0.5">
-                  Select your marketing asset. A unique database content record will be created.
-                </p>
-              </div>
+          {currentStep === 1 && (() => {
+            const isVideoFile = Boolean(
+              (selectedFile && selectedFile.type.startsWith('video/')) ||
+              (selectedFile && /\.(mp4|mov|avi|webm|mkv)$/i.test(selectedFile.name)) ||
+              (createdContent?.media_type === 'video') ||
+              (createdContent?.file_path && /\.(mp4|mov|avi|webm|mkv)$/i.test(createdContent.file_path))
+            );
 
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-                {/* Left: Drag & Drop Dropzone / Preview */}
-                <div className="md:col-span-6 space-y-3">
-                  {!previewUrl ? (
-                    <div
-                      onClick={() => {
-                        if (fileInputRef.current) {
-                          fileInputRef.current.value = '';
-                          fileInputRef.current.click();
-                        }
-                      }}
-                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (e.dataTransfer.files?.[0]) processCreativeFile(e.dataTransfer.files[0]);
-                      }}
-                      className="border-2 border-dashed border-[#CBD5E1] hover:border-[#315C76] bg-[#F8FAFC] hover:bg-[#F1F5F9] rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[260px]"
-                    >
-                      <div className="w-12 h-12 rounded-xl bg-white shadow-2xs border border-[#E2E8F0] flex items-center justify-center text-[#315C76] mb-3">
-                        <UploadCloud className="w-6 h-6 stroke-[1.8]" />
-                      </div>
-                      <span className="text-[13.5px] font-semibold text-[#172033]">
-                        Drop creative image here, or click to browse
-                      </span>
-                      <span className="text-[11.5px] text-[#64748B] mt-1">
-                        Supports JPG, JPEG, PNG, WEBP (Max 50MB)
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="relative rounded-2xl border border-[#CBD5E1] overflow-hidden bg-slate-900 group">
-                      <img
-                        src={previewUrl}
-                        alt="Creative Preview"
-                        className="w-full h-[260px] object-contain bg-slate-900/50"
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (fileInputRef.current) {
-                              fileInputRef.current.value = '';
-                              fileInputRef.current.click();
-                            }
-                          }}
-                          className="px-3 py-1.5 bg-white text-[#172033] rounded-lg text-xs font-semibold shadow-xs hover:bg-slate-100 transition-colors cursor-pointer"
-                        >
-                          Replace Image
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setSelectedFile(null); setPreviewUrl(null); }}
-                          className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold shadow-xs hover:bg-rose-700 transition-colors cursor-pointer"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
+            const isContextBlocked = Boolean(
+              createdContent &&
+              createdContent.context_score !== undefined &&
+              createdContent.context_score !== null &&
+              createdContent.context_score < 50
+            );
+
+            return (
+              <div className="space-y-5 animate-in fade-in duration-150">
+                <div className="border-b border-[#F1F5F9] pb-3 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-[16px] font-bold text-[#172033] font-heading">
+                      Step 1: Upload Post for Brand Governance
+                    </h4>
+                    <p className="text-[13px] text-[#64748B] mt-0.5">
+                      Select your marketing asset. Every uploaded creative undergoes AI Brand Context Verification.
+                    </p>
+                  </div>
+                  {createdContent?.context_score !== undefined && createdContent?.context_score !== null && (
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                      createdContent.context_score < 50
+                        ? 'bg-rose-100 text-rose-800 border-rose-300'
+                        : createdContent.context_score < 75
+                        ? 'bg-amber-100 text-amber-800 border-amber-300'
+                        : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    }`}>
+                      Context Score: {createdContent.context_score}/100
+                    </span>
                   )}
                 </div>
 
-                {/* Right: Post Metadata Details */}
-                <div className="md:col-span-6 space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-[#475569] mb-1">
-                      Post Title / Campaign Asset Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="e.g. Q3 Enterprise Robot Launch Creative"
-                      className="w-full px-3.5 py-2.5 border border-[#CBD5E1] rounded-xl text-[13px] text-[#172033] focus:outline-none focus:border-[#315C76]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[#475569] mb-1">
-                      Caption / Accompanying Copy
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={caption}
-                      onChange={(e) => setCaption(e.target.value)}
-                      placeholder="Enter promotional copy, claim statements, or post caption..."
-                      className="w-full px-3.5 py-2.5 border border-[#CBD5E1] rounded-xl text-[13px] text-[#172033] focus:outline-none focus:border-[#315C76]"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-[#475569] mb-1">
-                        Target Platform
-                      </label>
-                      <select
-                        value={platform}
-                        onChange={(e) => setPlatform(e.target.value)}
-                        className="w-full px-3 py-2 border border-[#CBD5E1] rounded-xl text-xs text-[#172033] bg-white focus:outline-none"
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+                  {/* Left: Drag & Drop Dropzone / Preview */}
+                  <div className="md:col-span-6 space-y-3">
+                    {!previewUrl && !createdContent?.file_path ? (
+                      <div
+                        onClick={() => {
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                            fileInputRef.current.click();
+                          }
+                        }}
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (e.dataTransfer.files?.[0]) processCreativeFile(e.dataTransfer.files[0]);
+                        }}
+                        className="border-2 border-dashed border-[#CBD5E1] hover:border-[#315C76] bg-[#F8FAFC] hover:bg-[#F1F5F9] rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[260px]"
                       >
-                        <option value="Instagram">Instagram</option>
-                        <option value="LinkedIn">LinkedIn</option>
-                        <option value="Twitter">Twitter / X</option>
-                        <option value="Facebook">Facebook</option>
-                        <option value="YouTube">YouTube Community</option>
-                      </select>
-                    </div>
+                        <div className="w-12 h-12 rounded-xl bg-white shadow-2xs border border-[#E2E8F0] flex items-center justify-center text-[#315C76] mb-3">
+                          <UploadCloud className="w-6 h-6 stroke-[1.8]" />
+                        </div>
+                        <span className="text-[13.5px] font-semibold text-[#172033]">
+                          Drop creative image or video here, or click to browse
+                        </span>
+                        <span className="text-[11.5px] text-[#64748B] mt-1">
+                          Supports JPG, PNG, WEBP, MP4, MOV, WEBM (Max 50MB)
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="relative rounded-2xl border border-[#CBD5E1] overflow-hidden bg-slate-900 group">
+                        {isVideoFile ? (
+                          <video
+                            src={previewUrl || formatAssetUrl(createdContent?.file_path)}
+                            controls
+                            className="w-full h-[260px] object-contain bg-slate-900"
+                          />
+                        ) : (
+                          <img
+                            src={previewUrl || formatAssetUrl(createdContent?.file_path)}
+                            alt="Creative Preview"
+                            className="w-full h-[260px] object-contain bg-slate-900/50"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = '';
+                                fileInputRef.current.click();
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-white text-[#172033] rounded-lg text-xs font-semibold shadow-xs hover:bg-slate-100 transition-colors cursor-pointer"
+                          >
+                            Replace Asset
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedFile(null);
+                              setPreviewUrl(null);
+                              setCreatedContent(null);
+                              setErrorMessageSafe(null);
+                            }}
+                            className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold shadow-xs hover:bg-rose-700 transition-colors cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
+                  {/* Right: Post Metadata Details */}
+                  <div className="md:col-span-6 space-y-4">
                     <div>
                       <label className="block text-xs font-semibold text-[#475569] mb-1">
-                        Hashtags
+                        Post Title / Campaign Asset Name *
                       </label>
                       <input
                         type="text"
-                        value={hashtags}
-                        onChange={(e) => setHashtags(e.target.value)}
-                        placeholder="#Brand #Launch"
-                        className="w-full px-3 py-2 border border-[#CBD5E1] rounded-xl text-xs text-[#172033] focus:outline-none"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="e.g. NOVA Enterprise Laptop Creative"
+                        className="w-full px-3.5 py-2.5 border border-[#CBD5E1] rounded-xl text-[13px] text-[#172033] focus:outline-none focus:border-[#315C76]"
                       />
                     </div>
-                  </div>
 
-                  <div className="pt-3 border-t border-[#F1F5F9] flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <span className="text-[11.5px] text-[#64748B]">
-                      {hasValidSavedGuidelines ? '✓ Brand guidelines active' : '• Brand guidelines required before audit'}
-                    </span>
-                    <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
-                      <button
-                        type="button"
-                        onClick={(e) => handleSavePostStep1(e, false)}
-                        disabled={isSavingPost || !selectedFile}
-                        className="px-4 py-2 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#172033] rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50"
-                      >
-                        <span>{hasValidSavedGuidelines ? 'Review Brand Info' : 'Continue to Brand Info'}</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                      {hasValidSavedGuidelines && (
+                    <div>
+                      <label className="block text-xs font-semibold text-[#475569] mb-1">
+                        Caption / Accompanying Copy
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={caption}
+                        onChange={(e) => setCaption(e.target.value)}
+                        placeholder="Enter promotional copy, claim statements, or post caption..."
+                        className="w-full px-3.5 py-2.5 border border-[#CBD5E1] rounded-xl text-[13px] text-[#172033] focus:outline-none focus:border-[#315C76]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-[#475569] mb-1">
+                          Target Platform
+                        </label>
+                        <select
+                          value={platform}
+                          onChange={(e) => setPlatform(e.target.value)}
+                          className="w-full px-3 py-2 border border-[#CBD5E1] rounded-xl text-xs text-[#172033] bg-white focus:outline-none"
+                        >
+                          <option value="Instagram">Instagram</option>
+                          <option value="LinkedIn">LinkedIn</option>
+                          <option value="Twitter">Twitter / X</option>
+                          <option value="Facebook">Facebook</option>
+                          <option value="YouTube">YouTube Community</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#475569] mb-1">
+                          Hashtags
+                        </label>
+                        <input
+                          type="text"
+                          value={hashtags}
+                          onChange={(e) => setHashtags(e.target.value)}
+                          placeholder="#Technology #Innovation"
+                          className="w-full px-3 py-2 border border-[#CBD5E1] rounded-xl text-xs text-[#172033] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-[#F1F5F9] flex flex-col sm:flex-row items-center justify-between gap-3">
+                      <span className="text-[11.5px] text-[#64748B]">
+                        • Step 2 (Brand Info) &amp; Step 3 (Guidelines) mandatory
+                      </span>
+                      <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
                         <button
                           type="button"
-                          onClick={(e) => handleSavePostStep1(e, true)}
-                          disabled={isSavingPost || !selectedFile}
-                          className="px-5 py-2 bg-[#315C76] hover:bg-[#183B59] text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+                          onClick={(e) => {
+                            if (isContextBlocked) {
+                              setErrorMessageSafe("Your uploaded creative does not match your company's business context. Please upload a relevant asset before continuing.");
+                              return;
+                            }
+                            if (createdContent) {
+                              setCurrentStep(2);
+                            } else {
+                              handleSavePostStep1(e);
+                            }
+                          }}
+                          disabled={isSavingPost || (!selectedFile && !createdContent) || isContextBlocked}
+                          className={`px-5 py-2.5 rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all shadow-xs ${
+                            isContextBlocked
+                              ? 'bg-rose-600/70 text-white cursor-not-allowed opacity-70'
+                              : 'bg-[#244B3F] hover:bg-[#18382F] text-white cursor-pointer disabled:opacity-50'
+                          }`}
+                          title={isContextBlocked ? "Creative is out-of-context (Score < 50). Progression is blocked." : "Continue to Step 2"}
                         >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>{isSavingPost ? 'Saving Post...' : 'Save & Run AI Audit'}</span>
+                          <span>
+                            {isSavingPost
+                              ? 'Verifying & Saving...'
+                              : isContextBlocked
+                              ? `Blocked: Out-of-Context (${createdContent?.context_score}/100)`
+                              : createdContent
+                              ? 'Continue to Brand Info'
+                              : 'Save & Continue to Brand Info'}
+                          </span>
+                          <ArrowRight className="w-4 h-4" />
                         </button>
-                      )}
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {/* ═══════════════════════════════════════════════════════════════════ */}
+                {/* BRAND CONTEXT VERIFICATION & IRRELEVANT CONTENT BLOCKING CARD      */}
+                {/* ═══════════════════════════════════════════════════════════════════ */}
+                {createdContent?.context_score !== undefined && createdContent?.context_score !== null && (
+                  <div className="animate-in fade-in duration-200 pt-2">
+                    {createdContent.context_score < 50 ? (
+                      /* CRITICAL OUT-OF-CONTEXT RED BANNER */
+                      <div className="p-4 sm:p-5 bg-rose-50 border-2 border-rose-400 rounded-2xl text-xs space-y-3.5 shadow-sm">
+                        <div className="flex items-start justify-between gap-3 border-b border-rose-200 pb-3">
+                          <div className="flex items-center space-x-2.5 text-rose-900">
+                            <div className="w-9 h-9 rounded-xl bg-rose-100 border border-rose-300 flex items-center justify-center shrink-0">
+                              <ShieldAlert className="w-5 h-5 text-rose-700" />
+                            </div>
+                            <div>
+                              <span className="font-bold text-sm text-rose-950 block tracking-tight">
+                                CRITICAL: OUT-OF-CONTEXT CONTENT DETECTED
+                              </span>
+                              <span className="text-[11.5px] text-rose-700 font-medium">
+                                AI Brand Context Verification Engine • Progression to Step 2 Strictly Blocked
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="px-3 py-1 rounded-full text-xs font-black bg-rose-200 text-rose-950 border border-rose-300 shadow-2xs">
+                              {createdContent.context_score}/100 • Irrelevant
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white/80 p-3.5 rounded-xl border border-rose-200">
+                          <div>
+                            <span className="text-[#68736B] block text-[11px] font-semibold uppercase tracking-wider">
+                              Uploaded Content Subject:
+                            </span>
+                            <span className="font-bold text-[#242B27] text-[13px]">
+                              {createdContent.context_verification?.detected_subject || 'Out-of-Context Asset'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[#68736B] block text-[11px] font-semibold uppercase tracking-wider">
+                              Company Profile &amp; Industry:
+                            </span>
+                            <span className="font-bold text-[#242B27] text-[13px]">
+                              {createdContent.context_verification?.company_name || brandProfile?.company_name || 'Company'} ({createdContent.context_verification?.company_industry || brandProfile?.industry || 'Registered Industry'})
+                            </span>
+                          </div>
+                        </div>
+
+                        {createdContent.context_verification?.rationale && (
+                          <div className="p-3 bg-white/60 rounded-xl border border-rose-200 text-[11.5px] text-rose-950 leading-relaxed">
+                            <span className="font-bold text-rose-900">AI Detection Rationale: </span>
+                            <span>{createdContent.context_verification.rationale}</span>
+                          </div>
+                        )}
+
+                        {createdContent.context_verification?.detected_problems && createdContent.context_verification.detected_problems.length > 0 && (
+                          <div className="space-y-1.5 p-3 bg-white/50 rounded-xl border border-rose-100">
+                            <span className="font-bold text-rose-950 text-[11px] uppercase tracking-wider block">
+                              Detected Context Mismatch Reasons:
+                            </span>
+                            <ul className="list-disc list-inside space-y-1 text-[11.5px] text-rose-900">
+                              {createdContent.context_verification.detected_problems.map((prob: string, idx: number) => (
+                                <li key={idx}>{prob}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {createdContent.context_verification?.layer4_critical_flag && (
+                          <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-[11.5px] text-amber-950 flex items-start space-x-2.5">
+                            <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                            <div>
+                              <strong className="text-amber-900">Layer 4 Rule Enforcement: </strong>
+                              <span>Placing your company logo on an unrelated image or video does not make it relevant. The underlying creative visual must belong to your company's commercial business.</span>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="p-3 bg-rose-100/90 border border-rose-300 rounded-xl text-rose-950 font-semibold text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <span className="leading-snug">
+                            {createdContent.context_verification?.recommended_action || "Your uploaded creative does not match your company's business context. Please upload a relevant asset before continuing."}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedFile(null);
+                              setPreviewUrl(null);
+                              setCreatedContent(null);
+                              setErrorMessageSafe(null);
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = '';
+                                fileInputRef.current.click();
+                              }
+                            }}
+                            className="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer shadow-xs transition-all"
+                          >
+                            Upload Relevant Creative
+                          </button>
+                        </div>
+                      </div>
+                    ) : createdContent.context_score < 75 ? (
+                      /* AMBER MANUAL REVIEW CARD */
+                      <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl text-xs space-y-2.5 shadow-2xs">
+                        <div className="flex items-center justify-between border-b border-amber-200 pb-2">
+                          <div className="flex items-center space-x-2 text-amber-900">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span className="font-bold text-xs">
+                              Brand Context: Needs Manual Review ({createdContent.context_score}/100)
+                            </span>
+                          </div>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
+                            Needs Review (50–74)
+                          </span>
+                        </div>
+                        <p className="text-[11.5px] text-amber-900">
+                          {createdContent.context_verification?.rationale || 'Brand context verification requires manual review before final approval.'}
+                        </p>
+                      </div>
+                    ) : (
+                      /* GREEN VERIFIED BADGE */
+                      <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl text-xs space-y-2 shadow-2xs">
+                        <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
+                          <div className="flex items-center space-x-2 text-emerald-900">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className="font-bold text-xs">
+                              ✓ Brand Context Verified: {createdContent.context_score}/100 • Relevant to Company Business
+                            </span>
+                          </div>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-200 text-emerald-900 border border-emerald-300">
+                            {createdContent.context_score >= 90 ? 'Highly Relevant (90–100)' : 'Relevant (75–89)'}
+                          </span>
+                        </div>
+                        <p className="text-[11.5px] text-emerald-900">
+                          {createdContent.context_verification?.rationale || 'Uploaded creative aligns with company industry and official product offerings.'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ========================================================================= */}
           {/* STEP 2: COMPANY BRAND INFORMATION                                         */}
@@ -1522,7 +1810,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setCurrentStep(1)}
-                  className="px-4 py-2 text-xs font-semibold text-[#64748B] hover:text-[#172033] flex items-center space-x-1"
+                  className="px-4 py-2 text-xs font-semibold text-[#64748B] hover:text-[#172033] flex items-center space-x-1 cursor-pointer"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Back to Post Upload</span>
@@ -1532,9 +1820,9 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
                   type="button"
                   onClick={handleSaveBrandInfoStep2}
                   disabled={isSavingBrandInfo}
-                  className="px-5 py-2.5 bg-[#315C76] hover:bg-[#183B59] text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer shadow-xs"
+                  className="px-5 py-2.5 bg-[#244B3F] hover:bg-[#18382F] text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer shadow-xs"
                 >
-                  <span>{isSavingBrandInfo ? 'Saving Brand Profile...' : 'Confirm Brand Info & Verify Guidelines'}</span>
+                  <span>{isSavingBrandInfo ? 'Saving Brand Profile...' : 'Confirm Brand Info & Continue to Guidelines'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -1733,7 +2021,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setCurrentStep(2)}
-                  className="px-4 py-2 text-xs font-semibold text-[#64748B] hover:text-[#172033] flex items-center space-x-1"
+                  className="px-4 py-2 text-xs font-semibold text-[#64748B] hover:text-[#172033] flex items-center space-x-1 cursor-pointer"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Back to Brand Info</span>
@@ -1741,18 +2029,18 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
 
                 {!hasValidSavedGuidelines && (
                   <span className="text-[11.5px] text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-lg">
-                    Upload or save company brand guidelines in database to enable AI Audit
+                    Upload or confirm company brand guidelines to proceed to AI Audit
                   </span>
                 )}
 
                 <button
                   type="button"
-                  onClick={handleStartAnalysisStep4}
+                  onClick={handleConfirmGuidelinesStep3}
                   disabled={!hasValidSavedGuidelines || isUploadingDoc}
-                  className="px-5 py-2.5 bg-[#315C76] hover:bg-[#183B59] text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-5 py-2.5 bg-[#244B3F] hover:bg-[#18382F] text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Start Actual AI Post Analysis</span>
+                  <Sparkles className="w-4 h-4 text-[#C6A66B]" />
+                  <span>Confirm Guidelines &amp; Start AI Audit</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -2913,7 +3201,7 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
 
                     {/* Image Preview Container */}
                     <div className="relative rounded-xl overflow-hidden bg-[#242B27] border border-[#E4DFD5] flex items-center justify-center min-h-[260px] max-h-[340px] p-2">
-                      {createdContent?.file_path || previewUrl || true ? (
+                      {createdContent?.file_path || previewUrl ? (
                         <img
                           src={formatAssetUrl(createdContent?.file_path) || previewUrl || '/uploads/creatives/test_sample_creative.png'}
                           onError={(e) => {
@@ -4582,14 +4870,14 @@ export const UploadForAuditModal: React.FC<UploadForAuditModalProps> = ({
                                     Disconnect
                                   </button>
                                 ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleConnectPlatform(p.id)}
+                                  <a
+                                    href={SOCIAL_LOGIN_URLS[p.name]}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                     className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-[#E4DFD5] hover:bg-[#F7F4EC] text-[#242B27] rounded-lg transition-colors cursor-pointer flex items-center space-x-1 shadow-2xs"
                                   >
-                                    <span>Connect</span>
-                                    <ExternalLink className="w-3 h-3 text-[#68736B]" />
-                                  </button>
+                                    <span>Connect ↗</span>
+                                  </a>
                                 )}
                               </div>
                             </div>

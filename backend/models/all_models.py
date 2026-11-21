@@ -231,6 +231,9 @@ class UploadedContent(Base):
     revised_caption = Column(Text, nullable=True)
     ai_suggestions = Column(JSON, nullable=True)
     approval_status = Column(String(50), default="Draft")  # Draft, Analysing, Needs Verification, Pending Evidence, Pending Approval, Changes Requested, Approved, Rejected
+    context_score = Column(Float, nullable=True)  # Brand Context Relevance Score: 0–100
+    context_status = Column(String(50), nullable=True)  # Highly Relevant, Relevant, Needs Manual Review, Irrelevant / Out of Context
+    context_verification = Column(JSON, nullable=True)  # Structured context verification report
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 

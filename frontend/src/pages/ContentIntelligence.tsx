@@ -4,6 +4,7 @@ import {
   Eye, History, ExternalLink, Sparkles, AlertTriangle
 } from 'lucide-react';
 import { apiRequest } from '../api/client';
+import { formatAssetUrl } from '../lib/utils';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
@@ -153,7 +154,7 @@ export const ContentIntelligence: React.FC = () => {
                   </div>
 
                   <div className="rounded-xl bg-[#F8FAFC] overflow-hidden border border-[#E2E8F0] h-48 flex items-center justify-center p-2">
-                    <img src={item.file_path} alt={item.title} className="max-h-full object-contain rounded-lg" />
+                    <img src={formatAssetUrl(item.file_path)} alt={item.title} className="max-h-full object-contain rounded-lg" />
                   </div>
 
                   <div>
@@ -230,7 +231,7 @@ export const ContentIntelligence: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="bg-[#F8FAFC] rounded-xl p-3 border border-[#E2E8F0] flex items-center justify-center">
-                  <img src={selectedContent.file_path} alt={selectedContent.title} className="max-h-72 object-contain rounded-lg" />
+                  <img src={formatAssetUrl(selectedContent.file_path)} alt={selectedContent.title} className="max-h-72 object-contain rounded-lg" />
                 </div>
                 <div className="p-3.5 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] text-[13px] space-y-1.5">
                   <div><strong className="text-[#172033]">Active Version:</strong> v{selectedContent.current_version}</div>

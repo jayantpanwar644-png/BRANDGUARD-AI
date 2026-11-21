@@ -54,7 +54,8 @@ class Settings(BaseModel):
     UPLOAD_DIR: Path = Path(os.getenv("UPLOAD_DIR", str(default_upload_dir)))
     MAX_FILE_SIZE_BYTES: int = 50 * 1024 * 1024  # 50 MB
     
-    ALLOWED_IMAGE_EXTENSIONS: set = {".jpg", ".jpeg", ".png", ".webp"}
+    ALLOWED_IMAGE_EXTENSIONS: set = {".jpg", ".jpeg", ".png", ".webp", ".mp4", ".mov", ".avi", ".webm", ".mkv"}
+    ALLOWED_MEDIA_EXTENSIONS: set = {".jpg", ".jpeg", ".png", ".webp", ".mp4", ".mov", ".avi", ".webm", ".mkv"}
     ALLOWED_DOC_EXTENSIONS: set = {".pdf", ".docx", ".txt", ".csv", ".png", ".jpg", ".jpeg"}
 
     # OAuth — Meta (Facebook + Instagram)

@@ -433,6 +433,9 @@ class UploadedContentResponse(BaseModel):
     revised_caption: Optional[str] = None
     ai_suggestions: Optional[Any] = None
     approval_status: str
+    context_score: Optional[float] = None
+    context_status: Optional[str] = None
+    context_verification: Optional[Dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime
     versions: List[ContentVersionResponse] = []

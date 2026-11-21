@@ -1,8 +1,33 @@
 import io
 import os
-import requests
+import sys
 from pathlib import Path
 from PIL import Image
+
+root_dir = Path(__file__).resolve().parent.parent
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
+
+from fastapi.testclient import TestClient
+from backend.main import app
+
+test_client = TestClient(app)
+
+class HttpClient:
+    def get(self, url, **kwargs):
+        path = url.replace("http://127.0.0.1:8000", "")
+        return test_client.get(path, **kwargs)
+    def post(self, url, **kwargs):
+        path = url.replace("http://127.0.0.1:8000", "")
+        return test_client.post(path, **kwargs)
+    def put(self, url, **kwargs):
+        path = url.replace("http://127.0.0.1:8000", "")
+        return test_client.put(path, **kwargs)
+    def delete(self, url, **kwargs):
+        path = url.replace("http://127.0.0.1:8000", "")
+        return test_client.delete(path, **kwargs)
+
+requests = HttpClient()
 
 BASE_URL = "http://127.0.0.1:8000/api"
 
@@ -87,6 +112,16 @@ def run_e2e_tests():
     }
     res = requests.put(f"{BASE_URL}/brand/profile", headers=headers, json=guideline_payload)
     assert res.status_code == 200, f"Brand profile setup failed: {res.text}"
+
+    # Upload official guideline document into brand_guidelines table
+    guidelines_doc = "Official Nexus Dynamics Brand Guidelines: Primary color is #1A56DB. Prohibited words: miracle, cheapest."
+    res = requests.post(
+        f"{BASE_URL}/brand/guidelines/upload",
+        headers=headers,
+        data={"version": "1.0", "document_category": "Master Guidelines"},
+        files={"file": ("nexus_guidelines.txt", io.BytesIO(guidelines_doc.encode("utf-8")), "text/plain")}
+    )
+    assert res.status_code == 200, f"Guideline document upload failed: {res.text}"
     print("✓ TEST 2 PASSED: Logo uploaded and brand guidelines active.")
 
     # TEST 3 & 4: Image Upload & Real AI Brand Audit

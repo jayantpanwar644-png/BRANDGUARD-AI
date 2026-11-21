@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from backend.core.config import settings
 from backend.core.security_tokens import decrypt_token
-from backend.models.all_models import ConnectedSocialAccount
+from backend.models.all_models import ConnectedSocialAccount, UploadedContent, PublishedPost
 from backend.services.social_providers.base import BaseSocialProvider
 
 logger = logging.getLogger(__name__)
@@ -179,11 +179,68 @@ class LinkedInProvider(BaseSocialProvider):
                 if not post_urn:
                     continue
 
+                caption = post.get("commentary") or post.get("text") or ""
+                media_url = ""
+                content_obj = post.get("content") or {}
+                if isinstance(content_obj, dict):
+                    media_url = content_obj.get("entity", {}).get("url") or content_obj.get("media", {}).get("id") or ""
+
+                post_time = datetime.now(timezone.utc)
+                created_ts = post.get("createdAt")
+                if created_ts:
+                    try:
+                        post_time = datetime.fromtimestamp(created_ts / 1000.0, tz=timezone.utc)
+                    except Exception:
+                        pass
+
+                clean_urn = post_urn.replace("urn:li:share:", "").replace("urn:li:ugcPost:", "")
+                permalink = f"https://www.linkedin.com/feed/update/{post_urn}/"
+
+                pub_post = db.query(PublishedPost).filter(
+                    PublishedPost.organisation_id == account.organisation_id,
+                    PublishedPost.platform == "LinkedIn",
+                    PublishedPost.external_post_id == post_urn
+                ).first()
+
+                if not pub_post:
+                    title_preview = (caption[:45] + "…") if len(caption) > 45 else (caption or f"LinkedIn Post #{clean_urn[-6:]}")
+                    content_item = UploadedContent(
+                        organisation_id=account.organisation_id,
+                        title=title_preview,
+                        caption=caption,
+                        platform="LinkedIn",
+                        media_type="Article" if not media_url else "Image",
+                        file_path=media_url or permalink,
+                        file_name=f"linkedin_{clean_urn}.jpg",
+                        file_size=0,
+                        approval_status="Approved",
+                        created_at=post_time,
+                    )
+                    db.add(content_item)
+                    db.flush()
+
+                    pub_post = PublishedPost(
+                        organisation_id=account.organisation_id,
+                        content_id=content_item.id,
+                        platform="LinkedIn",
+                        external_post_id=post_urn,
+                        post_url=permalink,
+                        published_at=post_time,
+                        likes_count=0,
+                        comments_count=0,
+                        shares_count=0,
+                        status="Published",
+                        publish_response="Synchronized via official LinkedIn Community Management API."
+                    )
+                    db.add(pub_post)
+                    db.flush()
+
                 # Query social comments for this post
                 comments_url = f"https://api.linkedin.com/rest/socialActions/{post_urn}/comments?count=20"
                 c_resp = requests.get(comments_url, headers=headers, timeout=10)
                 if c_resp.status_code == 200:
                     comments = c_resp.json().get("elements", [])
+                    pub_post.comments_count = len(comments)
                     for c in comments:
                         c_urn = c.get("id", str(datetime.now(timezone.utc).timestamp()))
                         c_text = c.get("message", {}).get("text", "")
@@ -199,6 +256,8 @@ class LinkedInProvider(BaseSocialProvider):
                             author_name=author_name,
                             comment_date=c_time,
                             post_id=str(post_urn),
+                            post_url=permalink,
+                            internal_post_id=pub_post.id,
                         ):
                             total_imported += 1
 

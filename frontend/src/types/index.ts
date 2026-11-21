@@ -187,6 +187,22 @@ export interface UploadedContent {
   current_version: number;
   revised_file_path?: string;
   approval_status: 'Draft' | 'Analysing' | 'Needs Verification' | 'Pending Evidence' | 'Pending Approval' | 'Changes Requested' | 'Approved' | 'Rejected';
+  context_score?: number | null;
+  context_status?: string | null;
+  context_verification?: {
+    context_score?: number;
+    context_status?: string;
+    detected_subject?: string;
+    company_name?: string;
+    company_industry?: string;
+    rationale?: string;
+    recommended_action?: string;
+    detected_problems?: string[];
+    is_blocked?: boolean;
+    logo_override_attempted?: boolean;
+    layer4_critical_flag?: boolean;
+    relevance_details?: Record<string, any>;
+  } | null;
   created_at: string;
   updated_at: string;
   versions?: ContentVersion[];

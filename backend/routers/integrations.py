@@ -6,7 +6,7 @@ import logging
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
@@ -472,23 +472,24 @@ def oauth_authorize(
     if p_id not in PROVIDER_META:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported platform '{platform}'. Valid options: instagram, facebook, linkedin, youtube."
+            detail=f"Unsupported platform '{platform}'. Valid options: instagram, facebook, linkedin, youtube, twitter, x."
         )
 
-    # Check configuration
+    DIRECT_LOGIN_URLS = {
+        "instagram": "https://www.instagram.com/accounts/login/",
+        "facebook": "https://www.facebook.com/login/",
+        "linkedin": "https://www.linkedin.com/login",
+        "youtube": "https://accounts.google.com/",
+        "twitter": "https://x.com/i/flow/login",
+        "x": "https://x.com/i/flow/login",
+    }
+
+    # If provider OAuth credentials are not configured, return official direct login portal URL
     if not settings.is_provider_configured(p_id):
-        meta = PROVIDER_META[p_id]
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": "credentials_missing",
-                "message": f"OAuth credentials not configured for {meta['name']}. Set the required environment variables.",
-                "platform": p_id,
-                "missing_keys": [k for k in meta["required_keys"] if not getattr(settings, k, "").strip()],
-                "redirect_uri": settings.get_redirect_uri(p_id),
-                "setup_guide": meta["setup_guide"]
-            }
-        )
+        return {
+            "auth_url": DIRECT_LOGIN_URLS.get(p_id, "https://www.instagram.com/accounts/login/"),
+            "direct_login": True
+        }
 
     state = str(uuid.uuid4())
     redirect_uri = settings.get_redirect_uri(p_id)
@@ -625,8 +626,9 @@ def oauth_callback(
 
     except Exception as exc:
         logger.error(f"Token exchange exception: {exc}", exc_info=True)
+        err_msg = quote(str(exc) or "Failed to communicate with provider API")
         return RedirectResponse(
-            url=f"{frontend_base}/app/integrations?error=Failed+to+communicate+with+provider+API&platform={p_id}",
+            url=f"{frontend_base}/app/integrations?error={err_msg}&platform={p_id}",
             status_code=302
         )
 
@@ -996,6 +998,12 @@ def publish_multi_content(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Publication Blocked: Content approval status is '{content.approval_status}'. Content must have human 'Approved' status before publication."
+        )
+
+    if content.context_score is not None and content.context_score < 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Publication Blocked: Content was classified as out-of-context for this organisation."
         )
 
     if not req.platforms:

@@ -99,30 +99,39 @@ if not (_frontend_dist / "index.html").exists():
     _frontend_dist = _root_dir / "dist"
 _has_frontend_build = _frontend_dist.exists() and (_frontend_dist / "index.html").exists()
 
-# Safe serverless static assets handler (never hangs on ASGI adapters)
+# Safe serverless static assets handler (with path traversal protection)
 @app.get("/assets/{asset_path:path}")
 def serve_asset(asset_path: str):
     if _has_frontend_build:
-        target = _frontend_dist / "assets" / asset_path
-        if target.is_file():
+        try:
+            resolved_base = (_frontend_dist / "assets").resolve()
+            target = (_frontend_dist / "assets" / asset_path).resolve()
+            if target.is_relative_to(resolved_base) and target.is_file():
+                mime, _ = mimetypes.guess_type(str(target))
+                return Response(
+                    content=target.read_bytes(),
+                    media_type=mime or "application/octet-stream",
+                    headers={"Cache-Control": "public, max-age=31536000, immutable"}
+                )
+        except (ValueError, RuntimeError):
+            pass
+    raise HTTPException(status_code=404, detail="Asset not found")
+
+# Safe serverless upload files handler (with path traversal protection)
+@app.get("/uploads/{upload_path:path}")
+@app.get("/api/uploads/{upload_path:path}")
+def serve_upload(upload_path: str):
+    try:
+        resolved_base = settings.UPLOAD_DIR.resolve()
+        target = (settings.UPLOAD_DIR / upload_path).resolve()
+        if target.is_relative_to(resolved_base) and target.is_file():
             mime, _ = mimetypes.guess_type(str(target))
             return Response(
                 content=target.read_bytes(),
-                media_type=mime or "application/octet-stream",
-                headers={"Cache-Control": "public, max-age=31536000, immutable"}
+                media_type=mime or "application/octet-stream"
             )
-    raise HTTPException(status_code=404, detail="Asset not found")
-
-# Safe serverless upload files handler
-@app.get("/uploads/{upload_path:path}")
-def serve_upload(upload_path: str):
-    target = settings.UPLOAD_DIR / upload_path
-    if target.is_file():
-        mime, _ = mimetypes.guess_type(str(target))
-        return Response(
-            content=target.read_bytes(),
-            media_type=mime or "application/octet-stream"
-        )
+    except (ValueError, RuntimeError):
+        pass
     raise HTTPException(status_code=404, detail="File not found")
 
 # Include Routers

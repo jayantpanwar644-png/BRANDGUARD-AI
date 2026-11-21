@@ -27,6 +27,7 @@ from backend.services.vision_engine import (
     generate_revised_creative_image
 )
 from backend.services.rag_engine import verify_claim_against_knowledge_base
+from backend.services.context_verification_engine import verify_brand_context
 from backend.routers.brand_knowledge import check_brand_setup_complete
 
 router = APIRouter(prefix="/content", tags=["Content Intelligence"])
@@ -68,6 +69,28 @@ async def upload_content(
 
     file_url = f"/uploads/images/{filename}"
 
+    # Run Brand Context Verification Engine immediately upon upload
+    brand_profile = db.query(BrandProfile).filter(BrandProfile.organisation_id == org.id).first()
+    guidelines = db.query(BrandGuideline).filter(BrandGuideline.organisation_id == org.id, BrandGuideline.is_active == True).all()
+    sections = db.query(DocumentSection).join(BrandGuideline).filter(BrandGuideline.organisation_id == org.id).all()
+    facts = db.query(CompanyFact).filter(CompanyFact.organisation_id == org.id).all()
+    rules = db.query(BrandRule).filter(BrandRule.organisation_id == org.id, BrandRule.is_active == True).all()
+    assets = db.query(BrandAsset).filter(BrandAsset.organisation_id == org.id).all()
+
+    context_result = await verify_brand_context(
+        file_path_str=str(file_dest),
+        org=org,
+        brand_profile=brand_profile,
+        guidelines=guidelines,
+        document_sections=sections,
+        company_facts=facts,
+        brand_rules=rules,
+        brand_assets=assets,
+        caption=caption
+    )
+
+    is_video = ext in {".mp4", ".mov", ".avi", ".webm", ".mkv"}
+
     content = UploadedContent(
         organisation_id=org.id,
         user_id=current_user.id,
@@ -75,12 +98,15 @@ async def upload_content(
         caption=caption,
         hashtags=hashtags,
         platform=platform,
-        media_type="Image",
+        media_type="Video" if is_video else "Image",
         file_path=file_url,
         file_name=file.filename,
         file_size=file_size,
         current_version=1,
-        approval_status="Draft"
+        approval_status="Draft",
+        context_score=float(context_result.get("context_score", 0)),
+        context_status=context_result.get("context_status", "Irrelevant / Out of Context"),
+        context_verification=context_result
     )
     db.add(content)
     db.flush()
@@ -103,15 +129,16 @@ async def upload_content(
         action_type="UPLOAD_CONTENT",
         entity_type="UploadedContent",
         entity_id=content.id,
-        description=f"Creative '{title}' ({file.filename}) uploaded under version 1."
+        description=f"Creative '{title}' ({file.filename}) uploaded under version 1. Context Score: {content.context_score}/100 ({content.context_status})."
     )
     db.add(log)
     db.commit()
     db.refresh(content)
 
     return {
-        "message": "Content uploaded successfully. Ready for AI Brand Audit.",
-        "content": content
+        "message": "Content uploaded and brand context verified.",
+        "content": content,
+        "context_verification": context_result
     }
 
 @router.get("", response_model=List[UploadedContentResponse])
@@ -217,6 +244,57 @@ def delete_content(
     db.commit()
     return {"message": "Content record and associated analysis versions deleted."}
 
+@router.post("/{id}/verify-context")
+async def verify_content_context_endpoint(
+    id: int,
+    current_user: User = Depends(get_current_user),
+    org: Organisation = Depends(get_current_organisation),
+    db: Session = Depends(get_db)
+):
+    content = db.query(UploadedContent).filter(
+        UploadedContent.id == id,
+        UploadedContent.organisation_id == org.id
+    ).first()
+    if not content:
+        raise HTTPException(status_code=404, detail="Content record not found.")
+
+    brand_profile = db.query(BrandProfile).filter(BrandProfile.organisation_id == org.id).first()
+    guidelines = db.query(BrandGuideline).filter(BrandGuideline.organisation_id == org.id, BrandGuideline.is_active == True).all()
+    sections = db.query(DocumentSection).join(BrandGuideline).filter(BrandGuideline.organisation_id == org.id).all()
+    facts = db.query(CompanyFact).filter(CompanyFact.organisation_id == org.id).all()
+    rules = db.query(BrandRule).filter(BrandRule.organisation_id == org.id, BrandRule.is_active == True).all()
+    assets = db.query(BrandAsset).filter(BrandAsset.organisation_id == org.id).all()
+
+    filename = Path(content.file_path).name
+    local_path = settings.UPLOAD_DIR / "images" / filename
+    if not local_path.exists():
+        local_path = Path(content.file_path)
+
+    context_result = await verify_brand_context(
+        file_path_str=str(local_path),
+        org=org,
+        brand_profile=brand_profile,
+        guidelines=guidelines,
+        document_sections=sections,
+        company_facts=facts,
+        brand_rules=rules,
+        brand_assets=assets,
+        caption=content.caption
+    )
+
+    content.context_score = float(context_result.get("context_score", 0))
+    content.context_status = context_result.get("context_status", "Irrelevant / Out of Context")
+    content.context_verification = context_result
+    db.commit()
+    db.refresh(content)
+
+    return {
+        "content_id": content.id,
+        "context_score": content.context_score,
+        "context_status": content.context_status,
+        "context_verification": context_result
+    }
+
 @router.post("/{id}/analyse")
 async def analyse_content(
     id: int,
@@ -233,6 +311,19 @@ async def analyse_content(
     ).first()
     if not content:
         raise HTTPException(status_code=404, detail="Content not found.")
+
+    if content.context_score is not None and content.context_score < 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your uploaded creative does not match your company's business context. Please upload a relevant asset before continuing."
+        )
+
+    # Strict Context Verification Check: Block Out-of-Context Assets from AI Audit
+    if content.context_score is not None and content.context_score < 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your uploaded creative does not match your company's business context. Please upload a relevant asset before continuing."
+        )
 
     # Check which file to analyze based on current version
     current_version_rec = db.query(ContentVersion).filter(
@@ -428,6 +519,12 @@ async def reanalyse_content(
     if not content:
         raise HTTPException(status_code=404, detail="Content not found.")
 
+    if content.context_score is not None and content.context_score < 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your uploaded creative does not match your company's business context. Please upload a relevant asset before continuing."
+        )
+
     # When reanalysing existing audited content, bump version so historical reports are preserved
     existing_reports_count = db.query(AuditReport).filter(AuditReport.content_id == content.id).count()
     if existing_reports_count > 0:
@@ -505,6 +602,12 @@ def rewrite_copy(
     if not content:
         raise HTTPException(status_code=404, detail="Content not found.")
 
+    if content.context_score is not None and content.context_score < 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your uploaded creative does not match your company's business context. Please upload a relevant asset before continuing."
+        )
+
     brand_profile = db.query(BrandProfile).filter(BrandProfile.organisation_id == org.id).first()
     rewritten = rewrite_copy_content(
         original_headline=content.title,
@@ -534,6 +637,12 @@ async def generate_revised_creative(
     ).first()
     if not content:
         raise HTTPException(status_code=404, detail="Content not found.")
+
+    if content.context_score is not None and content.context_score < 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your uploaded creative does not match your company's business context. Please upload a relevant asset before continuing."
+        )
 
     # Original local path
     orig_filename = Path(content.file_path).name
@@ -655,6 +764,12 @@ async def upload_content_version(
     if not content:
         raise HTTPException(status_code=404, detail="Content not found.")
 
+    if content.context_score is not None and content.context_score < 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your uploaded creative does not match your company's business context. Please upload a relevant asset before continuing."
+        )
+
     ext = Path(file.filename).suffix.lower()
     if ext not in settings.ALLOWED_IMAGE_EXTENSIONS:
         raise HTTPException(
@@ -766,6 +881,12 @@ def download_specific_version(
     if not content:
         raise HTTPException(status_code=404, detail="Content not found.")
 
+    if content.context_score is not None and content.context_score < 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your uploaded creative does not match your company's business context. Please upload a relevant asset before continuing."
+        )
+
     target_ver = db.query(ContentVersion).filter(
         ContentVersion.content_id == content.id,
         ContentVersion.version_number == version_num
@@ -817,6 +938,12 @@ def get_content_versions(
     if not content:
         raise HTTPException(status_code=404, detail="Content not found.")
 
+    if content.context_score is not None and content.context_score < 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your uploaded creative does not match your company's business context. Please upload a relevant asset before continuing."
+        )
+
     return db.query(ContentVersion).filter(ContentVersion.content_id == content.id).order_by(ContentVersion.version_number.asc()).all()
 
 @router.post("/{id}/reanalyse-version/{version_num}")
@@ -839,6 +966,12 @@ async def reanalyse_specific_version(
     ).first()
     if not content:
         raise HTTPException(status_code=404, detail="Content not found.")
+
+    if content.context_score is not None and content.context_score < 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your uploaded creative does not match your company's business context. Please upload a relevant asset before continuing."
+        )
 
     target_version = db.query(ContentVersion).filter(
         ContentVersion.content_id == content.id,

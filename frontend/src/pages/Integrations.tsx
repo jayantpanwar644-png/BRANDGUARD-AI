@@ -76,6 +76,14 @@ const PLATFORMS = [
 
 type PlatformId = typeof PLATFORMS[number]['id'];
 
+const SOCIAL_LOGIN_URLS: Record<string, string> = {
+  Instagram: "https://www.instagram.com/accounts/login/",
+  Facebook: "https://www.facebook.com/login/",
+  LinkedIn: "https://www.linkedin.com/login",
+  YouTube: "https://accounts.google.com/",
+  "X (Twitter)": "https://x.com/i/flow/login",
+};
+
 interface PlatformStatus {
   platform: PlatformId;
   name: string;
@@ -227,41 +235,6 @@ export const Integrations: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  // Initiate Real Official OAuth Login
-  const handleConnect = async (platformId: PlatformId) => {
-    setConnectingId(platformId);
-    setCardErrors(prev => ({ ...prev, [platformId]: '' }));
-
-    try {
-      const res = await apiRequest<{ auth_url: string }>(`/integrations/oauth/${platformId}/authorize`);
-      if (res?.auth_url) {
-        // Redirect browser to official OAuth authorization website
-        window.location.href = res.auth_url;
-      } else {
-        const pName = PLATFORMS.find(p => p.id === platformId)?.name || platformId;
-        setCardErrors(prev => ({
-          ...prev,
-          [platformId]: `${pName} connection is temporarily unavailable. Please contact your administrator.`
-        }));
-      }
-    } catch (err: any) {
-      const pName = PLATFORMS.find(p => p.id === platformId)?.name || platformId;
-      let isCredentialsMissing = false;
-      if (err?.detail && typeof err.detail === 'object' && err.detail.error === 'credentials_missing') {
-        isCredentialsMissing = true;
-      }
-
-      const missingKeys = err?.detail?.missing_keys?.join(', ');
-      const friendlyMsg = isCredentialsMissing
-        ? `${pName} OAuth credentials not configured in .env. Required: ${missingKeys || 'META_APP_ID, META_APP_SECRET'}.`
-        : (err?.detail?.message || err?.message || `${pName} connection is temporarily unavailable.`);
-
-      setCardErrors(prev => ({ ...prev, [platformId]: friendlyMsg }));
-    } finally {
-      setConnectingId(null);
-    }
-  };
 
   // Disconnect social account
   const executeDisconnect = async (platformId: PlatformId) => {
@@ -491,8 +464,8 @@ export const Integrations: React.FC = () => {
 
       {/* Four Social Platform Cards Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {PLATFORMS.map((p) => {
-          const { id, name, heading, description, cta, note, Icon, color, bgColor, accountType } = p;
+        {PLATFORMS.map((platform) => {
+          const { id, name, heading, description, cta, note, Icon, color, bgColor, accountType } = platform;
           const statusInfo = statusMap[id] || {
             platform: id,
             name,
@@ -641,25 +614,15 @@ export const Integrations: React.FC = () => {
                       </div>
                     )}
 
-                    {/* The Prominent Connection Button (e.g. Continue with Google / Continue with Instagram) */}
-                    <button
-                      type="button"
-                      onClick={() => handleConnect(id)}
-                      disabled={isConnecting}
-                      className="w-full py-3 px-5 bg-[#244B3F] hover:bg-[#18382F] text-white rounded-xl font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.99] disabled:opacity-70"
+                    {/* The Prominent Connection Button (Direct Login Link) */}
+                    <a
+                      href={SOCIAL_LOGIN_URLS[platform.name]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3 px-5 bg-[#244B3F] hover:bg-[#18382F] text-white rounded-xl font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.99]"
                     >
-                      {isConnecting ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Opening official {name} authorization…</span>
-                        </>
-                      ) : (
-                        <>
-                          <Icon className="w-4 h-4" />
-                          <span>{cta}</span>
-                        </>
-                      )}
-                    </button>
+                      Connect ↗
+                    </a>
 
                     {/* Explanatory security note */}
                     <p className="text-[11.5px] text-[#829887] flex items-center justify-center gap-1.5 text-center px-2">
@@ -684,16 +647,16 @@ export const Integrations: React.FC = () => {
                       <span>{isSyncing ? 'Synchronizing…' : 'Sync Now'}</span>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleConnect(id)}
-                      disabled={isConnecting}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#F7F4EC] text-[#242B27] text-xs font-semibold rounded-xl border border-[#E4DFD5] transition-colors cursor-pointer shadow-2xs active:scale-[0.98] disabled:opacity-60"
-                      title="Refresh authorization session with provider"
+                    <a
+                      href={SOCIAL_LOGIN_URLS[platform.name]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#F7F4EC] text-[#242B27] text-xs font-semibold rounded-xl border border-[#E4DFD5] transition-colors cursor-pointer shadow-2xs active:scale-[0.98]"
+                      title="Open official login page"
                     >
                       <RotateCw className="w-3.5 h-3.5 text-[#244B3F]" />
-                      <span>Reconnect</span>
-                    </button>
+                      <span>Connect ↗</span>
+                    </a>
                   </div>
 
                   <button
