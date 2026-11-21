@@ -1,3 +1,0 @@
-"""
-BrandGuard AI - Backend Package
-"""
