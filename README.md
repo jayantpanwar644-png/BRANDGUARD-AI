@@ -1,153 +1,320 @@
-# BrandGuard AI 🛡️
+# 🛡️ BRANDGUARD AI
+### AI-Powered Brand Governance & Reputation Intelligence Platform
 
-**Autonomous Enterprise Brand Governance, Multimodal AI Compliance & Real-Time Reputation Protection**
+**Protect Your Brand. Monitor Your Reputation. Govern Your Digital Presence.**
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-18.3+-61DAFB.svg)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.5+-3178C6.svg)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.4+-646CFF.svg)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.4+-38B2AC.svg)](https://tailwindcss.com/)
-[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E.svg)](https://supabase.com/)
-[![Vercel](https://img.shields.io/badge/Vercel-Deployed-black.svg)](https://brandguard-ai-web.vercel.app)
-[![Render](https://img.shields.io/badge/Render-Operational-46E3B7.svg)](https://brandguard-ai-backend-jcpz.onrender.com)
+BRANDGUARD AI is an intelligent brand governance and reputation protection platform designed to help businesses maintain brand consistency, monitor their digital presence, detect compliance risks, and make smarter content decisions using Artificial Intelligence.
+
+It brings brand compliance, content intelligence, audience insights, and reputation monitoring together in one centralized platform.
 
 ---
 
-## 🚀 Live Production Deployments
+## 🚀 Overview
 
-| Component | Architecture / Provider | Production URL | Status |
-| :--- | :--- | :--- | :---: |
-| **Frontend Web App** | Vercel Global Edge (SPA) | [https://brandguard-ai-web.vercel.app](https://brandguard-ai-web.vercel.app) | **ONLINE** |
-| **Backend REST API** | Render Persistent Container (FastAPI) | [https://brandguard-ai-backend-jcpz.onrender.com](https://brandguard-ai-backend-jcpz.onrender.com) | **ONLINE** |
-| **Health Check** | JSON Diagnostics | [https://brandguard-ai-backend-jcpz.onrender.com/api/health](https://brandguard-ai-backend-jcpz.onrender.com/api/health) | `200 OK` |
-| **Production Database** | Supabase PostgreSQL (27 Tables) | Dedicated AWS PostgreSQL Instance | **PROVISIONED** |
+In today's digital world, businesses publish content across multiple social media platforms. Maintaining consistent branding, following company guidelines, and protecting brand reputation across these platforms can be challenging.
 
-### Default Evaluation Tenant Credentials:
-- **Email:** `admin@nexusdynamics.io`
-- **Password:** `SecurePassword2026!`
-- **Organization:** Nexus Dynamics Inc (Chief Brand Officer)
+BRANDGUARD AI aims to solve this problem through AI-powered analysis, automated compliance checks, and centralized brand intelligence.
+
+The platform helps organizations identify potential brand violations, analyze content, and improve their digital communication before problems affect their reputation.
 
 ---
 
-## 📁 Repository Structure
+## ✨ Key Features
+
+### 1. 🧠 AI-Powered Brand Governance
+- Analyze content against company-specific brand guidelines.
+- Identify potential brand inconsistencies.
+- Detect content that may violate brand policies.
+- Generate actionable recommendations.
+
+### 2. 🛡️ Brand Compliance Analysis
+- Upload marketing creatives and social media posts.
+- Compare uploaded content with company guidelines.
+- Verify brand logo usage and visual consistency.
+- Identify potential compliance issues.
+
+### 3. 📊 Audience Intelligence
+- Centralized audience insights.
+- Understand audience engagement and reception.
+- Analyze available social media performance data.
+
+### 4. ⚠️ Reputation Risk Center
+- Identify potential brand reputation risks.
+- Highlight problematic content and emerging issues.
+- Support proactive reputation management.
+
+### 5. 🤖 Content Intelligence
+- AI-assisted content evaluation.
+- Intelligent recommendations for improving content.
+- Identify possible guideline violations.
+- Support better brand communication.
+
+### 6. 🔗 Social Media Integrations
+Designed to connect with major social media platforms:
+
+- Instagram
+- Facebook
+- LinkedIn
+- YouTube
+
+Social account connectivity and data access depend on platform APIs, permissions, and OAuth configuration.
+
+### 7. 📁 Brand Knowledge Hub
+- Manage company information.
+- Upload brand logos.
+- Maintain company-specific guidelines.
+- Use brand information as context for content analysis.
+
+### 8. 📈 Intelligence Dashboard
+A centralized dashboard for accessing brand governance, compliance insights, audience intelligence, and reputation-related information.
+
+---
+
+## 🏗️ Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React.js |
+| Build Tool | Vite |
+| Programming | TypeScript / JavaScript |
+| Styling | Tailwind CSS |
+| UI Components | shadcn/ui |
+| Backend | Python, FastAPI |
+| Database | Supabase |
+| Database Engine | PostgreSQL |
+| Authentication | OAuth / Authentication integrations |
+| AI | AI-powered analysis services |
+| Version Control | Git & GitHub |
+| Deployment | Vercel |
+
+---
+
+## 📂 Project Structure
 
 ```text
 BRANDGUARD-AI/
-├── frontend/                     # Modern React 18 + TypeScript + Vite SPA
-│   ├── public/                   # Static branding, favicons, illustrations
-│   ├── src/                      # Source components, pages, hooks, context
-│   │   ├── api/                  # Typed REST API client
-│   │   ├── components/           # Reusable UI widgets, audit modals, logo manager
-│   │   ├── context/              # Authentication & tenant state providers
-│   │   ├── pages/                # 11 full enterprise feature views
-│   │   ├── types/                # TypeScript interface definitions
-│   │   └── lib/                  # Formatting & asset URL utilities
-│   ├── index.html                # Vite HTML entry point
-│   ├── package.json              # Frontend npm dependencies
-│   ├── package-lock.json         # Pinned dependency lockfile
-│   ├── tailwind.config.js        # Design tokens & color system
-│   ├── tsconfig.json             # TypeScript compiler settings
-│   ├── vercel.json               # Frontend SPA catch-all rewrites
-│   └── vite.config.ts            # Vite bundler configuration
 │
-├── backend/                      # Production FastAPI Application
-│   ├── core/                     # Database engine, config, security, tokens
-│   ├── database/                 # Database connection & session re-exports
-│   ├── models/                   # SQLAlchemy relational data models (all 27 tables)
-│   ├── routers/                  # Modular FastAPI routers (auth, audit, brand, etc.)
-│   ├── schemas/                  # Pydantic v2 validation models
-│   ├── services/                 # Multimodal AI vision, context engine, sentiment
-│   │   ├── context_verification_engine.py  # Brand context relevance verification
-│   │   ├── storage_service.py              # Cloud storage & local persistence
-│   │   └── social_providers/               # Meta, LinkedIn, YouTube, X connectors
-│   ├── utils/                    # Helper functions & asset processors
-│   ├── uploads/                  # Storage directory with category subfolders
-│   ├── main.py                   # Application entry point & CORS configuration
-│   ├── pyproject.toml            # Python package specifications
-│   └── requirements.txt          # Production Python pip dependencies
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── assets/
+│   │   └── services/
+│   ├── package.json
+│   └── vite.config.ts
 │
-├── database/                     # Production Database Configurations & Migrations
-│   ├── migrations/               # Database migration scripts
-│   │   ├── 001_initial_schema.sql
-│   │   ├── 002_social_accounts.py
-│   │   └── migrate_sqlite_to_supabase.py   # Zero-downtime SQLite -> Supabase script
-│   ├── schema/                   # Complete SQL DDL schemas
-│   │   └── supabase_schema.sql             # Full 27-table Supabase PostgreSQL DDL
-│   └── seed/                     # Seed scripts for initial tenants
-│       └── seed_demo_data.py
+├── backend/
+│   ├── main.py
+│   ├── routers/
+│   ├── services/
+│   ├── models/
+│   ├── database/
+│   └── requirements.txt
 │
-├── docs/                         # Architecture, API & Deployment Documentation
-│   ├── ARCHITECTURE.md           # System architecture & verification reports
-│   └── README.md                 # Documentation overview
+├── database/
+│   ├── schema/
+│   └── migrations/
 │
-├── .gitignore                    # Comprehensive production git ignore rules
-├── .env.example                  # Environment variables reference template
-├── package.json                  # Root monorepo orchestration script
-├── render.yaml                   # Render deployment configuration
-├── vercel.json                   # Root Vercel SPA routing
-└── README.md                     # This documentation file
+├── docs/
+│
+├── .env.example
+├── .gitignore
+└── README.md
 ```
+
+*The structure above represents the intended organization; retain only directories that exist in the actual project.*
 
 ---
 
-## ⚡ Quick Start (Local Setup)
+## ⚙️ Installation & Setup
 
 ### Prerequisites
-- Python 3.10+
-- Node.js 18+ & npm
 
-### 1. Clone & Setup Environment
+Make sure you have installed:
+
+- Node.js (20.19+ recommended)
+- npm
+- Python 3.10+
+- Git
+- Supabase account (if using Supabase)
+
+### 1. Clone the Repository
+
 ```bash
 git clone https://github.com/jayantpanwar644-png/BRANDGUARD-AI.git
+
 cd BRANDGUARD-AI
-cp .env.example .env
 ```
 
-### 2. Backend Setup
-```bash
-# Install Python dependencies
-pip install -r backend/requirements.txt
+### 2. Frontend Setup
 
-# Start backend server (Port 8000)
-python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-### 3. Frontend Setup
 ```bash
-# Navigate to frontend and install dependencies
 cd frontend
+
 npm install
 
-# Start Vite development server (Port 3000)
-npm run dev -- --port 3000
+npm run dev
 ```
-Open **`http://localhost:3000`** in your browser.
+
+The frontend development server will provide a local URL, usually:
+
+```text
+http://localhost:5173
+```
+
+### 3. Backend Setup
+
+Open another terminal:
+
+```bash
+cd backend
+```
+
+Create a virtual environment:
+
+```bash
+python -m venv venv
+```
+
+Activate it on Windows:
+
+```bash
+venv\Scripts\activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Start the FastAPI server:
+
+```bash
+uvicorn main:app --reload
+```
+
+Backend API documentation (when enabled):
+
+```text
+http://127.0.0.1:8000/docs
+```
 
 ---
 
-## 🗄️ Database Provisioning (Supabase PostgreSQL)
+## 🔐 Environment Configuration
 
-1. Create a project in [Supabase](https://supabase.com).
-2. Open the **SQL Editor**, paste the contents of **`database/schema/supabase_schema.sql`**, and execute it.
-3. Migrate existing local data into Supabase with zero data loss:
-   ```bash
-   python database/migrations/migrate_sqlite_to_supabase.py "postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres"
-   ```
-4. Set `DATABASE_URL` in your Render Environment Variables to the Supabase connection URI.
+Create the required environment files using `.env.example` as a reference.
+
+Typical configuration variables may include:
+
+```env
+# Frontend
+VITE_API_BASE_URL=
+
+# Supabase
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+
+# Backend
+SUPABASE_SERVICE_ROLE_KEY=
+
+# AI Configuration
+AI_API_KEY=
+
+# Social Media OAuth
+INSTAGRAM_CLIENT_ID=
+INSTAGRAM_CLIENT_SECRET=
+
+FACEBOOK_CLIENT_ID=
+FACEBOOK_CLIENT_SECRET=
+
+LINKEDIN_CLIENT_ID=
+LINKEDIN_CLIENT_SECRET=
+
+YOUTUBE_CLIENT_ID=
+YOUTUBE_CLIENT_SECRET=
+```
+
+**Security Notice:**
+- Never commit actual API keys or secrets to GitHub.
+- Keep private credentials in backend environment variables.
+- Never expose Supabase service-role keys in frontend code.
+- Configure OAuth redirect URLs correctly.
+
+Use only the variables required by the actual application code.
 
 ---
 
-## 🔐 Security & Governance Principles
+## 🗄️ Database
 
-1. **Zero Hardcoded Secrets:** No API keys, passwords, or OAuth credentials are saved in git or public repositories.
-2. **AES-256 Token Encryption:** All external platform tokens are encrypted at rest using Fernet symmetric encryption.
-3. **Multi-Tenant Scoping:** All operations strictly enforce `organisation_id` checks across all 27 tables.
-4. **Context Verification Engine:** Automatically blocks random, out-of-industry, or irrelevant marketing uploads before they reach the audit or publication stages.
-5. **Direct Platform Logins:** Clean, external `<a>` tags open official social media login portals without OAuth configuration dependencies.
+BRANDGUARD AI uses Supabase/PostgreSQL for its database architecture.
+
+Database responsibilities may include:
+
+- User and authentication information.
+- Company profiles.
+- Brand guidelines.
+- Brand assets and logos.
+- Analysis records.
+- Social media integration metadata.
+- Reputation and audience intelligence data.
+
+Database migrations and schema files should be maintained in the `database/` directory.
 
 ---
 
-## 📄 License & Attribution
+## 🔄 Application Workflow
 
-Developed for **BrandGuard AI Enterprise Governance Platform**. All rights reserved.
+1. **Authentication:** Users access the platform through the authentication system.
+2. **Brand Setup:** Configure company information, logo, and brand guidelines.
+3. **Social Connectivity:** Connect supported social media accounts.
+4. **Content Upload:** Upload a creative or social media post for analysis.
+5. **AI Analysis:** Evaluate the content against brand requirements.
+6. **Risk Detection:** Identify potential inconsistencies and compliance issues.
+7. **Recommendations:** Receive AI-assisted suggestions for improvement.
+8. **Brand Intelligence:** Access available audience, governance, and reputation insights.
+
+---
+
+## 🎯 Our Mission
+
+To make brand governance smarter, reputation protection proactive, and digital brand management more intelligent.
+
+BRANDGUARD AI aims to transform traditional brand monitoring into an AI-powered, centralized brand intelligence ecosystem.
+
+---
+
+## 🔮 Future Scope
+
+- Advanced real-time brand monitoring.
+- Deeper social media analytics.
+- Multimodal AI-based brand compliance.
+- Automated reputation risk alerts.
+- Advanced competitor intelligence.
+- Enterprise-level multi-brand management.
+- AI-assisted content optimization.
+
+---
+
+## 👨‍💻 Project Information
+
+**Project Name:** BRANDGUARD AI
+
+**Category:** Artificial Intelligence | Brand Governance | Reputation Management
+
+**Repository:** [GitHub – BRANDGUARD AI](https://github.com/jayantpanwar644-png/BRANDGUARD-AI)
+
+**Deployment:** Vercel (deployment configuration dependent)
+
+---
+
+## 📜 License
+
+Add an appropriate open-source license before distributing this project. Until then, all rights are reserved by the respective copyright holder.
+
+---
+
+### 🚀 BRANDGUARD AI
+**Building a smarter, safer, and more consistent digital brand future.**
